@@ -1,0 +1,8 @@
+# Versions validated for the RoadWeave P0-A baseline.
+ESP_IDF_VERSION=v5.4.4
+HOST_CMAKE_VERIFIED_MACOS=4.4.3
+HOST_NINJA_VERIFIED_MACOS=1.13.2
+MORSE_HALOW_COMPONENT=morsemicro/halow
+MORSE_HALOW_DEPENDENCY=morsemicro/mmhalow
+MORSE_HALOW_VERSION=2.11.2-esp32-2
+MORSE_BOARD_PROFILE=sdkconfig.defaults.seeed_xiao_esp32s3-seeed_xiao_mm6108

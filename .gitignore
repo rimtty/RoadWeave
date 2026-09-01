@@ -3,9 +3,10 @@ build/
 sdkconfig
 sdkconfig.old
 managed_components/
-dependencies.lock
+.tools/
+.private/
+firmware/porting_assistant/
 *.kicad_prl
 *.kicad_sch-bak
 *.kicad_pcb-bak
 *-backups/
-
