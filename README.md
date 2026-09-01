@@ -8,10 +8,11 @@ RoadWeave は、インターネットや携帯回線がない場所でも、ツ�
 
 | ライン | 無線モジュール | 位置づけ |
 |---|---|---|
+| P0 reference | Seeed Studio Wio-WM6180 / FGH100M-H / MM6108 | XIAO ESP32S3へ直接挿し、公式board profileでhost/networkを先行検証する。量産BOMの決定ではない |
 | Main | Heltec HT-HC01 V2 / MM6108 / 27 dBm級 | 機能・距離・電力の主開発。日本国内では適合確認前に通常の空中線送信を行わず、シールド環境・導通試験または適法な地域で評価する |
-| Japan side line | MegaChips MRF61_A / MM6108 / 技適取得済み | 日本向け製品化を並走検討。13 dBm、国内バンド・Duty制約を実機で検証する |
+| Japan side line | FGH100M-J / MegaChips MRF61_A | 日本向け製品化を並走検討。認証、antenna、国内band、出力、Duty、供給条件を実機・一次資料で検証する |
 
-HC01 V2を主系にするのは、PA/LNAを含むRF性能と入手性を早く評価するためです。日本で販売・使用する製品がHC01 V2のまま成立する、という意味ではありません。
+最初にWM6180を使うのは、はんだ付けや自作carrierなしで、公式pin/BCF設定からsoftwareを検証できるためです。WM6180での成功はHC01 V2固有の電源・PA・RF性能を証明しません。HC01 V2を主系にするのは、PA/LNAを含むRF性能と入手性を評価するためで、日本で販売・使用する製品がHC01 V2のまま成立する、という意味ではありません。
 
 ## 最初の成功条件
 
@@ -42,15 +43,22 @@ RoadWeave/
 - [BOM・100/1,000/10,000台コスト](docs/bom.md)
 - [電力・バッテリー予算](docs/power-budget.md)
 - [ESP32-S3 GPIO割り当て案](docs/gpio-allocation.md)
+- [macOS / Windows / Linux CI開発環境](docs/development-environment.md)
 - [KiCad回路図ブロック案](docs/kicad-schematic-plan.md)
 - [PoCロードマップ](docs/poc-roadmap.md)
+- [実行スケジュール](docs/schedule.md)
 - [音声ネットワーク設計](docs/voice-networking.md)
 - [GPS隊列・breadcrumb・PMTiles構想](docs/gps-and-maps.md)
+- [XIAO + WM6180初回起動手順](docs/bringup/xiao-wm6180-first-boot.md)
+- [P0-A software検証記録](docs/bringup/p0-a-software-validation.md)
 - [ADR-0001: 開発ラインと段階戦略](docs/decisions/0001-development-lines.md)
+- [ADR-0002: WM6180をP0 reference platformにする](docs/decisions/0002-wm6180-reference-platform.md)
 
 ## 現時点の重要ゲート
 
-- Morse MicroのESP-IDF向けHaLowコンポーネントはプレリリース。ESP32-S3/MM6108は対象だが、**HC01 V2用BCFとファームウェアの組み合わせを実機確認するまで採用確定しない**。
+- Morse MicroのESP-IDF向けHaLowコンポーネントはプレリリース。P0-AはESP-IDF `v5.4.4`とcomponent `2.11.2-esp32-2`を固定し、XIAO + WM6180公式profileから検証する。
+- 購入したWM6180は902–928 MHz系。日本国内で通常の空中線送信をせず、RF fixtureと適法な試験条件を先に確定する。
+- **HC01 V2用BCFとファームウェアの組み合わせを実機確認するまで、製品主系の採用は確定しない**。
 - HC01 V2は3.3 V系とPA用5 V系を持つ。27 dBm・100% TXでは5 V側が最大約400 mA級になるため、平均値だけで電源を設計しない。
 - 日本向けはMRF61_Aを別BOM・別RF試験として維持する。モジュールの技適だけで、アンテナ条件、最終製品のEMC・安全・表示など全要件が自動的に完了するわけではない。
 - 地図PoCは地図データなしの隊列・Radar・breadcrumbから始める。PMTilesはmicroSDと描画負荷の実測後に判断する。
@@ -65,4 +73,4 @@ RoadWeave/
 
 ## ステータス
 
-現在は設計・部品調達前のP0準備段階です。本文書の金額・電力・通信性能は、明記のない限り2026-09-02時点の設計仮定であり、発注見積や実機測定値ではありません。
+現在はP0-A reference hardware購入済み、到着・bring-up待ちです。XIAO ESP32S3とWio-WM6180を各3台用意し、XIAO単体診断から1 gateずつ進めます。本文書の金額・電力・通信性能は、購入記録または実測値と明記したものを除き、2026-09-02時点の設計仮定です。

@@ -9,8 +9,9 @@ RoadWeaveは長距離のHaLow IP-PTTを早く検証したい。一方、27 dBm�
 
 ## Decision
 
+- P0-Aのreference bring-upはADR-0002に従い、XIAO ESP32S3 + Wio-WM6180で先行する。これは製品ラインの変更ではない。
 - HC01 V2を機能・距離・電力評価のmain development lineとする。
-- MRF61_AをJapan-compliance side lineとして、protocolとapplicationを共通化する。
+- FGH100M-JとMRF61_AをJapan-compliance side lineとして比較し、protocolとapplicationを共通化する。
 - RF module差分を`halow_port`、board config、regulatory profileへ隔離する。
 - HC01 V2を日本向け量産品として既定採用しない。
 - 日本国内でHC01 V2を評価する場合、適合確認前は通常の空中線送信を避け、適法な試験方法を選ぶ。

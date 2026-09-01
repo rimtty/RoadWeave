@@ -40,11 +40,12 @@ RoadWeaveは車列向けのローカルIPネットワーク端末である。一
 
 ## 3. ハードウェア基準構成
 
-| ブロック | Rev.A方針 | 理由 |
+| ブロック | 方針 | 理由 |
 |---|---|---|
+| P0 reference | XIAO ESP32S3 + Wio-WM6180 | header直結と公式board profileで、host/network softwareを最短で検証 |
 | MCU | ESP32-S3-WROOM-1-N16R8 | PSRAMを音声buffer、地図cache、UIに使い、16 MB flashにHaLow FW/BCFとOTA余地を確保 |
 | HaLow main | HT-HC01 V2、SPI host | 27 dBm級PA/LNA内蔵。ESP32向け公式コンポーネントのSPI構成と合わせる |
-| HaLow Japan | MRF61_A_FL | MM6108共通性を保ちつつ、日本向け認証モジュールを評価 |
+| HaLow Japan | FGH100M-J / MRF61_A_FL | MM6108共通性を保ちつつ、日本向け認証、antenna、供給条件を比較 |
 | Mic | 16 kHz対応I2S MEMS（T5848級） | ADC/アナログプリアンプを避ける |
 | Speaker | MAX98357A級 + 4 ohm 3 W | I2S DAC/Class-D一体、PoC入手性 |
 | Display | 1.47 inch ST7789系 172x320 IPS | 発話者と隊列を縦画面に表示しやすい |
@@ -65,7 +66,7 @@ RoadWeaveは車列向けのローカルIPネットワーク端末である。一
 | `ui` | active speaker、group、convoy/radar/route | read-only state models |
 | `storage` | settings、logs、将来のrecord/PMTiles | flash/microSD abstraction |
 
-音声、位置、UIをHaLowドライバから直接呼ばない。HC01 V2からMRF61_Aへ切り替える際に、`halow_port`とRF設定以外をできるだけ共通化する。
+音声、位置、UIをHaLowドライバから直接呼ばない。WM6180 referenceからHC01 V2、FGH100M-J、MRF61_Aへ切り替える際に、`halow_port`とboard/RF設定以外をできるだけ共通化する。
 
 ## 5. ネットワーク形態
 
@@ -108,6 +109,7 @@ CAR-03 --- CAR-01(AP) --- CAR-04
 
 | ID | 未決事項 | 解消条件 |
 |---|---|---|
+| A-00 | WM6180 referenceの再現性 | XIAO 3台smoke、3組porting assistant、2-node AP/STA/UDP soak |
 | A-01 | HC01 V2に対応するBCF/FWの正式な組み合わせ | porting assistant全項目PASS、AP/STA両方の連続試験 |
 | A-02 | ESP32-S3でOpusを何stream処理できるか | 8/12/16 kbps、1〜2同時speaker、CPU/RAM/温度実測 |
 | A-03 | HC01とMRF61の共通carrier PCB可否 | pinout、電源、keepout、認証アンテナ条件比較 |

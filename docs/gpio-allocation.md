@@ -5,6 +5,7 @@
 
 ## 1. 方針
 
+- P0-AのXIAO ESP32S3 + Wio-WM6180では、このRev.A案を配線せず、Morse Micro公式board profileをそのまま使う。
 - HC01 V2はESP-IDF向けMorse Micro componentに合わせ、SDIOではなくfull-duplex SPI + DMA + level interruptから開始する。
 - GPIO26〜37はflash/Octal PSRAM競合を避け、使用しない。
 - GPIO0/3/45/46はstrapping pinのため通常機能に割り当てない。
@@ -13,6 +14,23 @@
 - peripheral signalはGPIO matrixでroutingする。表の割り当ては回路図作成前にESP-IDF buildと実配線で検証する。
 
 制約の根拠は[ESP32-S3 GPIO documentation](https://docs.espressif.com/projects/esp-idf/en/stable/esp32s3/api-reference/peripherals/gpio.html)と[ESP32-S3-WROOM-1 datasheet](https://www.espressif.com/sites/default/files/documentation/esp32-s3-wroom-1_wroom-1u_datasheet_en.pdf)。
+
+## 1.1 P0-A reference profile
+
+Morse Micro HaLow component `2.11.2-esp32-2`同梱の`sdkconfig.defaults.seeed_xiao_esp32s3-seeed_xiao_mm6108`をsource of truthにする。
+
+| Signal | GPIO |
+|---|---:|
+| RESET_N | 1 |
+| WAKE | 2 |
+| SPI IRQ | 3 |
+| SPI CS | 4 |
+| BUSY | 5 |
+| SPI SCK | 7 |
+| SPI MISO | 8 |
+| SPI MOSI | 9 |
+
+この割り当てはWio-WM6180/XIAO header用であり、下記HC01 V2 Rev.A案へ転記しない。BCFは`bcf_fgh100mhaamd.bin`、chipはMM6108を指定する。
 
 ## 2. 割り当て表
 

@@ -1,0 +1,44 @@
+# RoadWeave 実行スケジュール
+
+更新日: 2026-09-02
+
+到着日は物流で変動するため、日付だけでなくgate完了を次工程の開始条件にする。GitHub Project #2のStart date、Target date、Iterationをsource of truthとして同期する。
+
+## 現在のP0-A
+
+| 期間 | Task | Gate / 成果物 | GitHub |
+|---|---|---|---|
+| 2026-09-02〜09-03 | firmware/toolchain準備 | ESP-IDF 5.4.4固定、XIAO smoke build、初回起動手順 | 新規P0-A prep task |
+| 2026-09-03〜09-08 | 到着・外観・XIAO単体試験 | 3台すべてUSB/flash/PSRAM PASS | Issue #1 |
+| 2026-09-04〜09-11 | WM6180 stack / porting assistant | 3組すべて公式profileで全項目PASS | Issue #2 |
+| 2026-09-10〜09-18 | AP/STA・UDP・復帰 | 2 node接続、8時間soak、再起動復帰 | Issue #3 |
+
+物流が遅れた場合はIssue #1〜#3を同じ日数だけslideし、RF安全gateや3台全数確認を省略して取り戻さない。
+
+## P0-B以降
+
+| 期間 | Phase | 主な成果 |
+|---|---|---|
+| 2026-09-15〜09-23 | P0-B audio local | I2S mic/amp loopback、hard mute、underrun測定 |
+| 2026-09-15〜09-25 | P0-B protocol | RWP/0.1 packet、PTT lease、malformed/sequence test |
+| 2026-09-22〜10-02 | P0-B 2-node voice | IMA-ADPCM/UDP、100〜150 ms目標 |
+| 2026-09-29〜10-09 | P0-B measurement | latency/loss/airtime/power測定 |
+| 2026-10-01〜10-30 | EVT readiness | 電源rail実証、Rev.A KiCad review |
+| 2026-10-26〜11-27 | P1 group voice | 4-node coordinator、targeted PTT、mute/gain、UI |
+| 2026-12-01〜2027-01-29 | P2 convoy/Japan line | GPS convoy/breadcrumb、MRF61_A/FGH100M-J比較 |
+| 2027-01-18〜03-19 | Future product spikes | Opus、recording、PMTiles-from-microSD |
+
+## 次の判断点
+
+1. **XIAO Gate:** 3台とも8 MiB flash/PSRAMを認識するか
+2. **WM6180 Gate:** 公式profileでSPI、chip ID、FW/BCF、BUSYが通るか
+3. **Network Gate:** 2台でAP/STAとUDPが8時間安定するか
+4. **Product-line Gate:** HC01 V2 carrierへ進むか、FGH100M-JまたはMRF61_Aを優先するか
+5. **P0-B Gate:** audio部品を購入し、IP-PTT latency測定へ進むか
+
+## スケジュール変更ルール
+
+- hardware到着前にsoftware prepとtest templateは完了させる
+- blockerはIssueへlogと写真を添付し、次taskを`In progress`へ移さない
+- 期日変更時は理由をIssue commentへ1行で残す
+- 規制/安全gateは日程都合で省略しない

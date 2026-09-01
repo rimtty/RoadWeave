@@ -6,27 +6,37 @@
 
 ## P0-A: HaLow host bring-up
 
-構成: ESP32-S3 dev board + HC01 V2 breakout/debug board、audioなし。
+構成: 3 x Seeed Studio XIAO ESP32S3 + 3 x Wio-WM6180、audioなし。2台をAP/STA、1台を交換診断・cross-checkに使う。
 
 実装:
 
-- Morse Micro ESP-IDF componentのversion固定
-- HC01 V2のBCF/FW確認
-- porting assistant
+- ESP-IDF `v5.4.4`とMorse Micro component `2.11.2-esp32-2`を固定
+- XIAO単体でUSB Serial/JTAG、8 MiB flash、8 MiB PSRAMを確認
+- 公式`sdkconfig.defaults.seeed_xiao_esp32s3-seeed_xiao_mm6108` profileを使用
+- WM6180/FGH100M-Hの`bcf_fgh100mhaamd.bin`とfirmware整合を確認
+- 3組でporting assistant
 - AP/STA、UDP echo、RSSI、再接続
 
 Exit criteria:
 
-- 2台でboot 50回、driver初期化成功100%
+- 3台すべてでXIAO単体smoke PASS
+- 3組すべてでporting assistant全項目PASS
+- 2台でcold boot 50回、driver初期化成功100%
 - 8時間連続UDPでpanic/memory leakなし
 - AP/STA両方の設定と復帰手順を再現可能
-- HC01 3.3 V/5 V railのidle/TX peakを記録
+- WM6180のidle/RX/TX currentとRF test条件を記録
 
-Stop condition: HC01固有BCFが合法的・再現可能に入手できない場合、主系を一時停止し、Morse Micro対応評価moduleまたはMRF61_Aでsoftware pipelineを先行する。
+Safety gate: FGH100M-H/WM6180は902–928 MHz系のため、日本国内の通常空間へ送信しない。RF端子を開放したまま送信せず、conducted/shielded testまたは適法な地域・設備を使う。
+
+Stop condition: 公式profileで3組のporting assistantを再現できない、RF試験方法を確保できない、またはBCF/FWのlicense/供給条件を確認できない場合はAP/STAへ進まず、Morse Micro/Seeedへ確認する。
+
+### P0-Aから製品main lineへの移行
+
+WM6180でhost/networkを成立させた後、HC01 V2 carrierで同じtest suiteを再実行する。HC01 V2の3.3 V/5 V rail、27 dBm PA、BCF/FW、antenna pathは別gateであり、WM6180のPASSを代用しない。日本向けはFGH100M-JとMRF61_Aを比較する。
 
 ## P0-B: 2-node breadboard IP-PTT
 
-構成: 2 x ESP32-S3 + HC01 V2 + I2S mic + I2S amp + speaker + wired PTT。
+構成: 2 x ESP32-S3 + validated HaLow reference + I2S mic + I2S amp + speaker + wired PTT。最初はWM6180、製品main lineではHC01 V2へ同じvoice testを移植する。
 
 実装:
 
