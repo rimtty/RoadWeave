@@ -1,0 +1,36 @@
+menu "RoadWeave UI (2.8in ILI9341 + XPT2046)"
+    config RW_LCD_SCLK_GPIO
+        int "LCD SPI SCLK"
+        default 7
+    config RW_LCD_MOSI_GPIO
+        int "LCD SPI MOSI"
+        default 9
+    config RW_LCD_MISO_GPIO
+        int "LCD/touch SPI MISO (-1 if unused)"
+        default 8
+    config RW_LCD_CS_GPIO
+        int "LCD CS"
+        default 4
+    config RW_LCD_DC_GPIO
+        int "LCD DC"
+        default 3
+    config RW_LCD_RST_GPIO
+        int "LCD RESET (-1 = not wired)"
+        default 2
+    config RW_LCD_BL_GPIO
+        int "LCD backlight (PWM, -1 = always on)"
+        default 1
+    config RW_TOUCH_CS_GPIO
+        int "XPT2046 touch CS (-1 = no touch)"
+        default 5
+    config RW_TOUCH_IRQ_GPIO
+        int "XPT2046 touch IRQ (-1 = polling)"
+        default -1
+    config RW_LCD_SPI_MHZ
+        int "LCD SPI clock MHz"
+        range 10 80
+        default 40
+    config RW_UI_SIMULATE
+        bool "Drive the UI from simulated convoy/voice data (no radio/GPS needed)"
+        default y
+endmenu
