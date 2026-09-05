@@ -43,8 +43,10 @@ RoadWeave/
 
 ## 設計文書
 
+- [製品定義 v2（最終形モックの吟味）](docs/product-definition-v2.md)
+- [事業性の再検討 v2](docs/business-case.md)
 - [アーキテクチャ](docs/architecture.md)
-- [BOM・100/1,000/10,000台コスト](docs/bom.md)
+- [BOM v2・100/1,000/10,000台コスト](docs/bom.md)
 - [電力・バッテリー予算](docs/power-budget.md)
 - [ESP32-S3 GPIO割り当て案](docs/gpio-allocation.md)
 - [macOS / Windows / Linux CI開発環境](docs/development-environment.md)
@@ -55,6 +57,8 @@ RoadWeave/
 - [GPS隊列・breadcrumb・PMTiles構想](docs/gps-and-maps.md)
 - [XIAO + WM6180初回起動手順](docs/bringup/xiao-wm6180-first-boot.md)
 - [P0-A software検証記録](docs/bringup/p0-a-software-validation.md)
+- [920 MHz 帯の国内制度](docs/regulatory-920mhz-japan.md)
+- [ディスプレイ選定](docs/display-selection.md)
 - [Audio bench notes](docs/bringup/audio-bench-notes.md)
 - [Opus benchmark 2026-09-05](docs/bringup/opus-bench-2026-09-05.md)
 - [voice_udp 計測 2026-09-06](docs/bringup/voice-udp-2026-09-06.md)

@@ -79,6 +79,20 @@ mini PCIe 側の信号は [firmware/boards/heltec_hc01p/README.md](../firmware/b
 （CS=1、MOSI=2、MISO=3、CLK=4、WAKE=10、BUSY=11、RESET_N=42、SPI_INT=48）。HAT の 40 pin header 側は実測で埋める。
 XIAO 側は WM6180 公式 profile と同じ GPIO を使う draft profile `sdkconfig.defaults.seeed_xiao_esp32s3-heltec_hc01p_v2` を用意した。
 
+## 2.2 v2: 2.8 インチ静電容量タッチ表示の追加 pin（Rev.A draft 0.2）
+
+| GPIO | Net / function | 備考 |
+|---:|---|---|
+| 38/39 | AUX_SPI_SCK / MOSI | LCD + microSD 共用（変更なし） |
+| 41 | LCD_CS_N | 変更なし |
+| 42 | LCD_DC | 変更なし |
+| 48 | LCD_BL_PWM | 25 kHz、boost driver の EN/PWM |
+| 4 / 5（I2C） | TOUCH_SDA / TOUCH_SCL | 静電容量タッチ（FT6336）と将来のセンサで共用。PTT/VOL は別 GPIO へ移す |
+| 21 | TOUCH_INT_N | KEY_VOL_DOWN から振り替え |
+| 1 / 2 / 3（I2C 化で空く GPIO4/5 の代替） | PTT_N / KEY_VOL_UP_N / KEY_VOL_DOWN_N | BAT_SENSE は ADC 対応 GPIO へ再配置（要 review） |
+
+表 §2 は v1 のまま。§2.2 の振り替えは KiCad 02/05 シート作成時に §2 へ統合する。
+
 ## 3. HC01 V2 module pad対応
 
 | HC01 pad | Name | ESP32 GPIO / treatment |

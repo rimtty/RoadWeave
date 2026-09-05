@@ -9,7 +9,7 @@ RoadWeaveは車列向けのローカルIPネットワーク端末である。一
 設計目標:
 
 - 携帯回線・クラウド不要
-- P0は2台、量産構想は通常8台、設計上限は16台を暫定目標
+- P0は2台、製品は通常6〜8台（v2: 最低6人で1グループ）、設計上限は16台
 - 半二重PTTのend-to-end音声遅延: 100〜150 ms以内
 - 標準3000 mAh 1S LiPoで通常ツーリング15時間をストレッチ目標、12時間を最低設計目標
 - 車載外部アンテナとハンディ運用の両方を許容
@@ -45,10 +45,10 @@ RoadWeaveは車列向けのローカルIPネットワーク端末である。一
 | P0 reference | XIAO ESP32S3 + Wio-WM6180 | header直結と公式board profileで、host/network softwareを最短で検証 |
 | MCU | ESP32-S3-WROOM-1-N16R8 | PSRAMを音声buffer、地図cache、UIに使い、16 MB flashにHaLow FW/BCFとOTA余地を確保 |
 | HaLow main | HT-HC01 V2、SPI host | 27 dBm級PA/LNA内蔵。ESP32向け公式コンポーネントのSPI構成と合わせる |
-| HaLow Japan | FGH100M-J / MRF61_A_FL | MM6108共通性を保ちつつ、日本向け認証、antenna、供給条件を比較 |
+| HaLow Japan | MRF61_A（製品主構成、v2） | 技適済み 13 dBm。920.5〜923.5 MHz を factory lock（regulatory-920mhz-japan.md） |
 | Mic | 16 kHz対応I2S MEMS（T5848級） | ADC/アナログプリアンプを避ける |
 | Speaker | MAX98357A級 + 4 ohm 3 W | I2S DAC/Class-D一体、PoC入手性 |
-| Display | 1.47 inch ST7789系 172x320 IPS | 発話者と隊列を縦画面に表示しやすい |
+| Display | 2.8 inch IPS 240x320 + 静電容量タッチ（v2） | 隊列・レーダー・ルートを走行中に一目で読む。タッチは停車時の設定用 |
 | GNSS | UART、1 Hz以上、PPS pad | まず位置・速度・方位。型番はPoC比較後に固定 |
 | Storage | Rev.AにmicroSD socket/pad、P0はDNP可 | 録音とPMTilesを基板改版なしで試せる余地 |
 | Battery | protected 1S LiPo 3000 mAh | 薄型筐体と一日運用のバランス |

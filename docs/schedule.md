@@ -46,6 +46,7 @@ Issue #2（target 09-11）はWM6180到着とRF fixture確保に依存するた�
 | 13 | 920 MHz 帯の送信時間制限の一次資料調査 | **完了**: 920.5〜923.5 MHz は総送信時間の制限なし（[まとめ](regulatory-920mhz-japan.md)、[RFQ 下書き](megachips-rfq-draft.md)） |
 | 14 | 位置ビーコン（P3）の pure C 実装 | **完了**: `firmware/components/position`、host test 58 checks |
 | 15 | Rev.A KiCad 骨組み | **完了**: `hardware/kicad/roadweave_reva`、kicad-cli 10.0.6 で ERC 0 / PDF 出力 OK |
+| 17 | 製品定義 v2 / BOM v2 / 事業性の再検討（最終形モック基準） | **完了**: [product-definition-v2](product-definition-v2.md)、[bom](bom.md)、[business-case](business-case.md)。Issue #19〜#21 |
 | 16 | 2.8 インチタッチディスプレイの選定と LVGL 先行実装 | **完了（ビルドのみ）**: [display-selection](display-selection.md)、`experiments/ui_lvgl`（ILI9341 + XPT2046 + LVGL 9、3 画面 + シミュレータ）。実機はディスプレイ到着後 |
 | 9 | UDP音声パイプラインをXIAO内蔵Wi-FiでMacと往復（HaLow代役、Issue #6/#7の前倒し） | **計測済み（アンテナ未装着、ルーター直近）**: 安定 60 s で RTT median 8 ms、mouth-to-ear median 100 / p95 160 ms（jb 80 ms）。floor control + PLC 結線済み。[記録](bringup/voice-udp-2026-09-06.md) |
 

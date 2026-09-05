@@ -54,14 +54,14 @@ Exit criteria:
 
 ## P1: Group IP-PTT
 
-- 4台、Group ID/User ID、active speaker
+- **6台**（製品定義 v2: 通常 6〜8 台）、Group ID/User ID、active speaker。追加ハードは Issue #20
 - Coordinator AP + STA
 - floor request/grant/lease、all-group PTT
-- 1.47in displayに`RX: USER`、link、battery
+- 2.8in タッチ表示（LVGL、`experiments/ui_lvgl`）に`RX: USER`、link、battery、convoy
 
 Exit criteria:
 
-- 4台で同時PTT競合を安全に解決
+- 6台で同時PTT競合を安全に解決（BUSY_WAIT、host simulator で先行検証済み）
 - 4時間の移動/bench attenuation試験で制御state不整合なし
 - group参加/離脱が音声streamを壊さない
 
@@ -94,7 +94,7 @@ Exit criteria:
 
 ## P4: Opusと個別制御
 
-- Opus voice 8/12/16 kbps、40 msを比較
+- Opus voice 12/16 kbps、complexity 0〜1（6 decode 実測: c0 36.6% / c3 60.1%）
 - individual mute、gain、targeted PTT
 - leader/subgroup/private target
 - application protocol versioning
@@ -102,7 +102,7 @@ Exit criteria:
 Exit criteria:
 
 - 8台、1 active speakerでCPU/RAM/qualityを測定
-- 2 simultaneous speakersは実測で余裕がある場合のみ有効化
+- 2 simultaneous speakers を正式仕様に（無線帯域の上限。MCU は 6 decode 可）
 - target外へprivate audio payloadを送らない設計をpacket captureで確認
 
 ## P5: Recording

@@ -90,9 +90,10 @@ firmwareだけに依存せず、ESP reset時もampをmuteするpulldownを置く
 
 ## 7. 05_display_ui
 
-- ST7789系display FPC/connectorまたはmodule header
-- AUX SPI SCK/MOSI、LCD_CS_N、LCD_DC
-- backlight transistor + PWM、current limit
+- 2.8 in ILI9341 / ST7789 系 IPS 240×320、FPC connector（v2: 製品定義 v2 で 1.47 in から変更）
+- AUX SPI SCK/MOSI、LCD_CS_N、LCD_DC、LCD_RESET
+- backlight LED boost driver + PWM（25 kHz）、current limit
+- 静電容量タッチ FT6336: I2C（TOUCH_SDA/SCL）、TOUCH_INT_N、TOUCH_RST
 - PTT、VOL+、VOL-、power key
 - night brightnessとglove operationをmechanical仕様に反映
 
