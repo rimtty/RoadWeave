@@ -1,0 +1,17 @@
+# BOARD: Seeed XIAO ESP32S3
+# HAT:   Heltec HC01P V2 (MM6108) via HT-HC01P Raspberry Pi HAT breakout, SPI mode
+# Status: DRAFT (ADR-0003). Pins reuse the official XIAO/WM6180 profile so a WM6180-validated
+# XIAO can be re-wired to the HC01P HAT without touching firmware. BCF is Heltec's file
+# (relative path from the project root); confirm the V2-specific BCF with Heltec before RF tests.
+
+CONFIG_MM_RESET_N=1
+CONFIG_MM_WAKE=2
+CONFIG_MM_BUSY=5
+CONFIG_MM_SPI_SCK=7
+CONFIG_MM_SPI_MOSI=9
+CONFIG_MM_SPI_MISO=8
+CONFIG_MM_SPI_CS=4
+CONFIG_MM_SPI_IRQ=3
+
+CONFIG_MM_BCF_FILE="../boards/heltec_hc01p/bcf_HC0P.bin"
+CONFIG_MM_CHIP_MM6108=y

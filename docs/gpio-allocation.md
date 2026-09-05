@@ -1,6 +1,6 @@
 # ESP32-S3 GPIO割り当て案
 
-更新日: 2026-09-02  
+更新日: 2026-09-05  
 対象: ESP32-S3-WROOM-1-N16R8 + HC01 V2、Rev.A draft 0.1
 
 ## 1. 方針
@@ -72,6 +72,12 @@ Morse Micro HaLow component `2.11.2-esp32-2`同梱の`sdkconfig.defaults.seeed_x
 | 48 | LCD_BL_PWM | output | external transistorでbacklight制御 | draft |
 
 LCD resetはESP32 ENに直接結ばず、専用RC/supervisorまたはLCD power/reset回路で処理する。GNSS UARTの43/44はboot logとの競合をbenchで確認し、問題があればKEYまたはADC pinとの交換を行う。
+
+## 2.1 HC01P V2 + HT-HC01P HAT（breadboard 段階）
+
+mini PCIe 側の信号は [firmware/boards/heltec_hc01p/README.md](../firmware/boards/heltec_hc01p/README.md) で確定済み
+（CS=1、MOSI=2、MISO=3、CLK=4、WAKE=10、BUSY=11、RESET_N=42、SPI_INT=48）。HAT の 40 pin header 側は実測で埋める。
+XIAO 側は WM6180 公式 profile と同じ GPIO を使う draft profile `sdkconfig.defaults.seeed_xiao_esp32s3-heltec_hc01p_v2` を用意した。
 
 ## 3. HC01 V2 module pad対応
 

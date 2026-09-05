@@ -12,7 +12,7 @@ on:
 
 jobs:
   host-tests:
-    name: Host unit tests (rwp)
+    name: Host unit tests (rwp, audio_pipeline, tools)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -23,6 +23,12 @@ jobs:
 
       - name: Run rwp host tests
         run: make -C firmware/components/rwp/test_host test
+
+      - name: Run audio_pipeline host tests
+        run: make -C firmware/components/audio_pipeline/test_host test
+
+      - name: rwp_peer.py self-test
+        run: python3 tools/rwp_peer.py selftest
 
   build:
     name: ESP-IDF build (esp32s3)

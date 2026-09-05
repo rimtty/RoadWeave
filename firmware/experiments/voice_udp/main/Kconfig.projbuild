@@ -1,0 +1,51 @@
+menu "RoadWeave voice_udp"
+
+    config RW_WIFI_SSID
+        string "Wi-Fi SSID (2.4 GHz stand-in for HaLow; not committed, lives in sdkconfig)"
+        default ""
+    config RW_WIFI_PASS
+        string "Wi-Fi password"
+        default ""
+    config RW_PEER_IP
+        string "Peer IPv4 (the Mac running tools/rwp_peer.py)"
+        default "192.168.1.10"
+    config RW_UDP_PORT
+        int "UDP port (send and listen)"
+        default 5004
+    config RW_GROUP_ID
+        hex "Group ID"
+        default 0x00000001
+    config RW_SENDER_ID
+        hex "Sender (node) ID"
+        default 0x00000101
+
+    config RW_TX_ALWAYS
+        bool "Transmit continuously (ignore PTT) - for bench measurement"
+        default y
+    config RW_PLAY_ECHO
+        bool "Play back frames whose sender_id is ours (echo from peer) - hear your own mouth-to-ear latency"
+        default y
+
+    config RW_I2S_BCLK_GPIO
+        int "I2S BCLK GPIO"
+        default 42
+    config RW_I2S_WS_GPIO
+        int "I2S WS GPIO"
+        default 41
+    config RW_I2S_MIC_DIN_GPIO
+        int "I2S mic DIN GPIO"
+        default 6
+    config RW_I2S_SPK_DOUT_GPIO
+        int "I2S amp DOUT GPIO (-1 = no amp)"
+        default 43
+    config RW_PTT_GPIO
+        int "PTT GPIO (active low, -1 = none)"
+        default 44
+    config RW_AMP_SD_GPIO
+        int "Amp SD GPIO (-1 = tied)"
+        default -1
+    config RW_OUTPUT_GAIN_PERCENT
+        int "Output gain percent"
+        range 0 400
+        default 50
+endmenu
