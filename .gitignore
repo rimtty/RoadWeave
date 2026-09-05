@@ -10,3 +10,4 @@ firmware/porting_assistant/
 *.kicad_sch-bak
 *.kicad_pcb-bak
 *-backups/
+firmware/halow_examples/

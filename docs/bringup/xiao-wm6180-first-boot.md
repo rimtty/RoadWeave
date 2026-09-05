@@ -1,6 +1,6 @@
 # XIAO ESP32S3 + Wio-WM6180 初回起動手順
 
-更新日: 2026-09-02  
+更新日: 2026-09-05  
 対象: Seeed Studio XIAO ESP32S3（header実装済み）+ Wio-WM6180 x 3
 
 ## 目的
@@ -83,6 +83,13 @@ idf.py menuconfig build
 | BCF | `bcf_fgh100mhaamd.bin` |
 
 Porting assistantはmemory、timing、task、SPI、chip ID、firmware/BCF、bus throughput、BUSYを検査する。1項目でもFAILならAP/STAへ進まず、node交換でXIAO側/WM6180側を切り分ける。
+
+### 2026-09-05 追記: 実行前チェック
+
+- porting assistant は恒久 toolchain（`~/esp/v5.4.4/esp-idf`）で XIAO profile 付き再ビルド済み。**flash 前に `idf.py menuconfig` で country code を設定する**（未設定 `??` のままでは実行しない）。
+- Gate 3 は RF 送信を伴わない bus/FW/BCF 試験だが、WM6180 の U.FL に 50 ohm 終端を付けてから通電する。
+- `sdkconfig` の python env 不一致で configure が落ちる場合は `idf.py fullclean` → `rm sdkconfig` → profile 付き `set-target` をやり直す。
+- Gate 4 用の softap / sta_connect / iperf は `firmware/scripts/create-halow-examples.sh` で生成・ビルドできる（生成物は git 管理外）。
 
 ## Gate 4: 2-node network
 
