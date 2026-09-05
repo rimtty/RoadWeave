@@ -30,12 +30,17 @@ Issue #2（target 09-11）はWM6180到着とRF fixture確保に依存するた�
 
 ### 到着待ちの間に進める作業（hardware不要または手元部品で可能）
 
-1. 残り2台のXIAO Gate 1（到着次第、各10分）
-2. RWP/0.1のserialize/parseとfloor state machineをhost側unit test付きで実装（Issue #5の前半）。ESP-IDF依存のないpure Cにして`components/voice_transport`へ置く
-3. Opus encode/decodeのCPU/RAM benchmarkをXIAO単体で実施（Issue #14の前倒し）。P0-BはIMA-ADPCMのままでよいが、airtime/Duty見積り（Issue #10）に16 kbps前後の実測値が必要
-4. SPH0645のI2S captureをXIAO単体で確認（Issue #4の前半、[audio bench notes](bringup/audio-bench-notes.md)）
-5. HT-HC01P HATの回路図から40 pin header→SPI/BUSY/RESET_N/WAKE対応を確認し、`gpio-allocation.md`へ追記
-6. RF fixture発注: U.FL(MHF1)–SMA pigtail x3、SMA 50 ohm終端 x3、SMA 30 dB固定attenuator(2 W) x2、SMA F-F barrel x1
+| # | 作業 | 状態（2026-09-05） |
+|---|---|---|
+| 1 | 残り2台のXIAO Gate 1（到着次第、各10分） | 待ち |
+| 2 | RWP/0.1のserialize/parseとfloor state machineをhost unit test付きで実装（Issue #5前半） | **完了**: `firmware/components/rwp`、host test 176 checks PASS、CIにhost-tests job追加 |
+| 3 | Opus encode/decodeのCPU/RAM benchmark（Issue #14前倒し） | **完了**: [結果](bringup/opus-bench-2026-09-05.md)。12 kbps/20 ms/c0で encode 18.7% + decode 4.3%（1 core比） |
+| 4 | SPH0645のI2S capture確認（Issue #4前半） | **firmware完成・実配線待ち**: `firmware/experiments/audio_bench`。mic未接続でboot/I2S/meter動作を確認済み |
+| 5 | I2S mic/amp loopbackとPTT hard mute（Issue #4後半） | **firmware完成・部品到着待ち**: 同上（loopback / test tone / PTT muteをKconfigで切替） |
+| 6 | HT-HC01P HATの回路図から40 pin→SPI/BUSY/RESET_N/WAKE対応を確認し`gpio-allocation.md`へ追記 | 未着手（要: 回路図入手） |
+| 7 | RF fixture発注: U.FL(MHF1)–SMA pigtail x3、SMA 50 ohm終端 x3、SMA 30 dB固定attenuator(2 W) x2、SMA F-F barrel x1 | 未発注 |
+
+branch `feat/p0-prep-rwp-audio` に 2〜5 の成果がある。
 
 ## P0-B以降
 

@@ -1,0 +1,50 @@
+menu "RoadWeave audio bench"
+
+    config RW_I2S_BCLK_GPIO
+        int "I2S BCLK GPIO (mic + amp shared)"
+        default 42
+        help
+            Issue #18 draft: D11 / GPIO42 (bottom pad). Any free GPIO works on the bench.
+
+    config RW_I2S_WS_GPIO
+        int "I2S WS/LRCLK GPIO (mic + amp shared)"
+        default 41
+        help
+            Issue #18 draft: D12 / GPIO41 (bottom pad).
+
+    config RW_I2S_MIC_DIN_GPIO
+        int "I2S mic DOUT -> ESP32 DIN GPIO"
+        default 6
+        help
+            Issue #18 draft: D5 / GPIO6.
+
+    config RW_I2S_SPK_DOUT_GPIO
+        int "I2S amp DIN <- ESP32 DOUT GPIO"
+        default 43
+        help
+            Issue #18 draft: D6 / GPIO43. Set to -1 when no amp is connected (capture only).
+
+    config RW_PTT_GPIO
+        int "PTT switch GPIO (active low, internal pull-up)"
+        default 44
+        help
+            Issue #18 draft: D7 / GPIO44. Set to -1 to disable PTT (never mute).
+
+    config RW_AMP_SD_GPIO
+        int "Amp SD/shutdown GPIO (high = enabled), -1 if tied on the breakout"
+        default -1
+
+    config RW_LOOPBACK
+        bool "Play mic input back through the amp (Issue #4 loopback)"
+        default y
+
+    config RW_TEST_TONE
+        bool "Play a 1 kHz test tone instead of the mic (amp/speaker check)"
+        default n
+
+    config RW_OUTPUT_GAIN_PERCENT
+        int "Output gain percent (100 = unity)"
+        range 0 400
+        default 50
+
+endmenu
