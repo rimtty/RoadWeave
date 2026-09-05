@@ -1,6 +1,6 @@
 # RoadWeave 実行スケジュール
 
-更新日: 2026-09-02
+更新日: 2026-09-05
 
 到着日は物流で変動するため、日付だけでなくgate完了を次工程の開始条件にする。GitHub Project #2のStart date、Target date、Iterationをsource of truthとして同期する。
 
@@ -14,6 +14,28 @@
 | 2026-09-10〜09-18 | AP/STA・UDP・復帰 | 2 node接続、8時間soak、再起動復帰 | Issue #3 |
 
 物流が遅れた場合はIssue #1〜#3を同じ日数だけslideし、RF安全gateや3台全数確認を省略して取り戻さない。
+
+## 2026-09-05時点の状況
+
+| 項目 | 状態 |
+|---|---|
+| XIAO ESP32S3 | 1台到着・Gate 1 PASS（[log](bringup/logs/2026-09-05-p0a-gate1-node1.md)）。残り2台は未実施 |
+| Wio-WM6180 x3 | 到着待ち |
+| HC01P V2 + HT-HC01P HAT x3 | 手元にあり。位置付けは[ADR-0003](decisions/0003-hc01p-hat-breakout-and-linux-bridge.md)（Proposed） |
+| SPH0645 x3 | 手元にあり。amp/speaker/PTTはIssue #18で到着待ち |
+| RF fixture | **未発注**。Gate 3は50 ohm終端のみで可、Gate 4はattenuator chainが必要 |
+| ESP-IDF v5.4.4 | `/tmp`配下の一時installだったため`~/esp/v5.4.4/esp-idf`へ移設中（[開発環境](development-environment.md)） |
+
+Issue #2（target 09-11）はWM6180到着とRF fixture確保に依存するため、到着日確定後に同じ日数だけslideし、理由をIssue commentへ残す。
+
+### 到着待ちの間に進める作業（hardware不要または手元部品で可能）
+
+1. 残り2台のXIAO Gate 1（到着次第、各10分）
+2. RWP/0.1のserialize/parseとfloor state machineをhost側unit test付きで実装（Issue #5の前半）。ESP-IDF依存のないpure Cにして`components/voice_transport`へ置く
+3. Opus encode/decodeのCPU/RAM benchmarkをXIAO単体で実施（Issue #14の前倒し）。P0-BはIMA-ADPCMのままでよいが、airtime/Duty見積り（Issue #10）に16 kbps前後の実測値が必要
+4. SPH0645のI2S captureをXIAO単体で確認（Issue #4の前半、[audio bench notes](bringup/audio-bench-notes.md)）
+5. HT-HC01P HATの回路図から40 pin header→SPI/BUSY/RESET_N/WAKE対応を確認し、`gpio-allocation.md`へ追記
+6. RF fixture発注: U.FL(MHF1)–SMA pigtail x3、SMA 50 ohm終端 x3、SMA 30 dB固定attenuator(2 W) x2、SMA F-F barrel x1
 
 ## P0-B以降
 

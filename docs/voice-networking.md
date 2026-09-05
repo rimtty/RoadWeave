@@ -1,6 +1,6 @@
 # 音声ネットワーク設計
 
-更新日: 2026-09-02  
+更新日: 2026-09-05  
 Protocol working name: RWP/0.1
 
 ## 1. 製品体験
@@ -44,6 +44,7 @@ Network byte order。wire formatはC structのpaddingへ依存させず、明示
 magic          u16   0x5257 ("RW")
 version        u8    0x01
 type           u8    CONTROL / VOICE / POSITION / EVENT
+codec          u8    VOICE時のpayload形式。0=IMA-ADPCM 16 kHz/20 ms、1=Opus。他typeは0
 flags          u16   encrypted, start, end, fec, recording_hint...
 header_len     u16
 group_id       u32
@@ -57,6 +58,8 @@ payload_len    u16
 payload        bytes
 auth_tag       bytes optional by security profile
 ```
+
+`codec`をheaderに持つことで、P0のIMA-ADPCMからP4のOpusへ移る際にprotocol versionを上げずに混在受信できる。受信側は未知のcodecを黙って捨て統計へ回す。
 
 `stream_id + sequence`でreorder/lossを検出する。wall-clock未同期でも再生できるよう、音声はmonotonic capture timeを使う。録音時にGNSS UTCとの対応eventを別に残す。
 

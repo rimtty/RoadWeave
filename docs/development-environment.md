@@ -1,6 +1,6 @@
 # 開発環境と再現手順
 
-更新日: 2026-09-02
+更新日: 2026-09-05
 
 ## 方針
 
@@ -13,6 +13,17 @@ WindowsではEspressifのWindows向けESP-IDF環境を使い、PowerShellから`
 公式Windows installerはPython、Git、cross compiler、CMake、Ninjaをまとめて導入する。install pathは空白・括弧を避け、ESP-IDFとtoolsのpathを90文字以内にする。
 
 ## macOS（主開発環境）
+
+### install場所とPython version（2026-09-05追記）
+
+- ESP-IDF本体は`~/esp/v5.4.4/esp-idf`、toolsは`~/.espressif`（`IDF_TOOLS_PATH`既定）に置く。`/tmp`配下はOS再起動で消えるため使わない。
+- `export.sh`は`python3`のminor versionでvenv名（`idf5.4_py3.X_env`）を決める。Homebrew Pythonが更新されると既存venvが見つからず`export`が失敗するので、その場合は`./install.sh esp32s3`を再実行するか、`IDF_PYTHON_ENV_PATH`で既存venvを明示する。
+- 毎回の手順:
+
+```bash
+source ~/esp/v5.4.4/esp-idf/export.sh
+```
+
 
 ESP-IDF `v5.4.4`をインストールしてexportしたターミナルで、リポジトリのルートから次を実行する。`/path/to/RoadWeave`は実際のcheckout pathに置き換える。
 
