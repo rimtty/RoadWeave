@@ -19,8 +19,18 @@ menu "RoadWeave voice_udp"
         hex "Sender (node) ID"
         default 0x00000101
 
+    config RW_COORDINATOR
+        bool "This node is the Group Coordinator (floor control). Exactly one node per group; also true for the Mac-echo bench"
+        default y
+    config RW_COORD_IP
+        string "Coordinator IPv4 (used when this node is not the coordinator)"
+        default "192.168.1.11"
+    config RW_GROUP_BROADCAST
+        bool "Send voice to the IPv4 broadcast address instead of the peer (2+ nodes on one AP)"
+        default n
+
     config RW_TX_ALWAYS
-        bool "Transmit continuously (ignore PTT) - for bench measurement"
+        bool "Hold PTT virtually forever (bench measurement without a switch)"
         default y
     config RW_PLAY_ECHO
         bool "Play back frames whose sender_id is ours (echo from peer) - hear your own mouth-to-ear latency"

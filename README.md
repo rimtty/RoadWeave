@@ -32,9 +32,13 @@ RoadWeave/
 ├── docs/                    設計判断、仕様、試験計画
 │   └── decisions/          変更理由を残すADR
 ├── firmware/                ESP-IDFアプリケーション
+│   ├── components/         rwp、audio_pipeline、opus
+│   ├── experiments/        opus_bench、audio_bench、voice_udp
+│   ├── sim/                host simulator（floor + voice over lossy channel）
+│   └── boards/             module 別の profile / BCF
 ├── hardware/
 │   └── kicad/              回路図・PCB・製造出力（今後追加）
-└── tools/                   設計・試験補助ツール（今後追加）
+└── tools/                   rwp_peer.py（Mac 側 echo / record / send）
 ```
 
 ## 設計文書
@@ -51,8 +55,13 @@ RoadWeave/
 - [GPS隊列・breadcrumb・PMTiles構想](docs/gps-and-maps.md)
 - [XIAO + WM6180初回起動手順](docs/bringup/xiao-wm6180-first-boot.md)
 - [P0-A software検証記録](docs/bringup/p0-a-software-validation.md)
+- [Audio bench notes](docs/bringup/audio-bench-notes.md)
+- [Opus benchmark 2026-09-05](docs/bringup/opus-bench-2026-09-05.md)
+- [voice_udp 計測 2026-09-06](docs/bringup/voice-udp-2026-09-06.md)
+- [消費電力の計測手順](docs/bringup/power-measurement-plan.md)
 - [ADR-0001: 開発ラインと段階戦略](docs/decisions/0001-development-lines.md)
 - [ADR-0002: WM6180をP0 reference platformにする](docs/decisions/0002-wm6180-reference-platform.md)
+- [ADR-0003: HC01P V2 + HATをbreakoutにする（Proposed）](docs/decisions/0003-hc01p-hat-breakout-and-linux-bridge.md)
 
 ## 現時点の重要ゲート
 
@@ -73,4 +82,13 @@ RoadWeave/
 
 ## ステータス
 
-現在はP0-A reference hardware購入済み、到着・bring-up待ちです。XIAO ESP32S3とWio-WM6180を各3台用意し、XIAO単体診断から1 gateずつ進めます。本文書の金額・電力・通信性能は、購入記録または実測値と明記したものを除き、2026-09-02時点の設計仮定です。
+2026-09-06 時点:
+
+- XIAO ESP32S3 1 台目: Gate 1（USB/flash/PSRAM smoke）PASS。残り 2 台と Wio-WM6180 x3 は到着待ち。
+- ESP-IDF v5.4.4 を恒久インストール（`~/esp/v5.4.4/esp-idf`）。porting assistant と Gate 4 用 example（softap / sta_connect / iperf）は XIAO profile でビルド済み。
+- P0-B の部品を先行実装: RWP/0.1 + floor control（`components/rwp`）、IMA-ADPCM + jitter buffer（`components/audio_pipeline`）、host test と host simulator（`firmware/sim`）を CI で実行。
+- Opus は XIAO 単体で実測済み（[結果](docs/bringup/opus-bench-2026-09-05.md)）。
+- 音声パイプラインを内蔵 2.4 GHz Wi-Fi で Mac と往復する実験（`experiments/voice_udp`）を初回計測（[記録](docs/bringup/voice-udp-2026-09-06.md)、アンテナ未装着）。
+- HC01P V2 の mini PCIe pin map と Heltec BCF を `firmware/boards/heltec_hc01p/` に配置。HAT 40 pin は実測待ち。
+
+本文書の金額・電力・通信性能は、購入記録または実測値と明記したものを除き設計仮定である。

@@ -17,6 +17,8 @@ typedef struct {
     uint32_t max_talk_ms;        // continuous PTT limit (120000)
     uint8_t  end_repeat;         // PTT_END repetitions (3)
     uint32_t end_interval_ms;    // spacing between PTT_END repeats (50)
+    uint32_t deny_retry_ms;      // while PTT is still held after DENY, re-request at this interval (250; 0 = give up)
+    uint32_t busy_wait_max_ms;   // give up waiting for a busy floor after this long (5000)
 } floor_cfg_t;
 
 // Defaults from the design doc.
@@ -28,6 +30,7 @@ typedef enum {
     FLOOR_REQUESTING,
     FLOOR_TALKING,
     FLOOR_ENDING,
+    FLOOR_BUSY_WAIT,   // denied while PTT held: retrying until the floor frees or PTT is released
 } floor_state_t;
 
 typedef enum {
@@ -50,6 +53,7 @@ enum {
     FLOOR_ACT_INDICATE_GRANT = 1u << 5,   // beep / UI
     FLOOR_ACT_INDICATE_FAIL  = 1u << 6,   // denied, timed out, link loss
     FLOOR_ACT_WARN_MAX_TALK  = 1u << 7,
+    FLOOR_ACT_INDICATE_BUSY  = 1u << 8,   // floor busy, still waiting (UI: busy tone once)
 };
 
 typedef struct {
@@ -61,6 +65,7 @@ typedef struct {
     uint32_t t_last_renew;   // last voice/renew sent
     uint32_t t_talk_start;
     uint32_t t_last_end;
+    uint32_t t_busy_since;   // when BUSY_WAIT began
     uint8_t  requests_sent;
     uint8_t  ends_sent;
 } floor_node_t;

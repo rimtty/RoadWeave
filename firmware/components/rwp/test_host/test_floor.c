@@ -43,15 +43,46 @@ static void test_request_timeout_and_retry(void)
     CHECK_EQ(floor_node_step(&n, FLOOR_EV_TICK, t + 100), FLOOR_ACT_SEND_REQUEST);   // retry 2
     CHECK_EQ(floor_node_step(&n, FLOOR_EV_TICK, t + 200), FLOOR_ACT_SEND_REQUEST);   // retry 3
     a = floor_node_step(&n, FLOOR_EV_TICK, t + 300);
-    CHECK_EQ(a, FLOOR_ACT_INDICATE_FAIL); CHECK_EQ(n.state, FLOOR_IDLE);              // give up, never STOP_TX (never started)
+    CHECK_EQ(a, FLOOR_ACT_INDICATE_BUSY); CHECK_EQ(n.state, FLOOR_BUSY_WAIT);         // no answer: keep trying while held
+    CHECK_EQ(floor_node_step(&n, FLOOR_EV_TICK, t + 550), FLOOR_ACT_SEND_REQUEST);   // deny_retry_ms later
+    CHECK_EQ(n.state, FLOOR_REQUESTING);
+    // legacy give-up behaviour when deny_retry_ms == 0
+    floor_cfg_t c = floor_cfg_default(); c.deny_retry_ms = 0; floor_node_t o; floor_node_init(&o, &c, 1);
+    floor_node_step(&o, FLOOR_EV_PTT_DOWN, 0);
+    for (uint32_t k = 100; k <= 300; k += 100) a = floor_node_step(&o, FLOOR_EV_TICK, k);
+    CHECK_EQ(a, FLOOR_ACT_INDICATE_FAIL); CHECK_EQ(o.state, FLOOR_IDLE);
+}
+
+static void test_deny_busy_wait_and_retry(void)
+{
+    floor_node_t n = node(); uint32_t a;
+    floor_node_step(&n, FLOOR_EV_PTT_DOWN, 0);
+    a = floor_node_step(&n, FLOOR_EV_DENY, 10);
+    CHECK_EQ(a, FLOOR_ACT_INDICATE_BUSY); CHECK_EQ(n.state, FLOOR_BUSY_WAIT);
+    CHECK_EQ(floor_node_step(&n, FLOOR_EV_TICK, 200), 0);
+    CHECK_EQ(floor_node_step(&n, FLOOR_EV_TICK, 260), FLOOR_ACT_SEND_REQUEST);   // retry after deny_retry_ms
+    CHECK_EQ(n.state, FLOOR_REQUESTING); CHECK_EQ(n.stream_id, 100);            // same stream id
+    a = floor_node_step(&n, FLOOR_EV_DENY, 300);
+    CHECK_EQ(a, 0); CHECK_EQ(n.state, FLOOR_BUSY_WAIT);                          // busy indicated only once
+    a = floor_node_step(&n, FLOOR_EV_GRANT, 400);                                // freed up: late grant accepted
+    CHECK(a & FLOOR_ACT_START_TX); CHECK_EQ(n.state, FLOOR_TALKING);
+    // release while waiting -> idle, no END needed (never granted)
+    floor_node_t m = node(); floor_node_step(&m, FLOOR_EV_PTT_DOWN, 0); floor_node_step(&m, FLOOR_EV_DENY, 10);
+    CHECK_EQ(floor_node_step(&m, FLOOR_EV_PTT_UP, 50), 0); CHECK_EQ(m.state, FLOOR_IDLE);
+    // give up after busy_wait_max_ms of denies
+    floor_node_t k = node(); floor_node_step(&k, FLOOR_EV_PTT_DOWN, 0); uint32_t t = 10; uint32_t last = 0;
+    floor_node_step(&k, FLOOR_EV_DENY, t);
+    for (; t < 6000; t += 10) { last = floor_node_step(&k, FLOOR_EV_TICK, t); if (last & FLOOR_ACT_SEND_REQUEST) floor_node_step(&k, FLOOR_EV_DENY, t + 5); if (k.state == FLOOR_IDLE) break; }
+    CHECK_EQ(k.state, FLOOR_IDLE); CHECK(last & FLOOR_ACT_INDICATE_FAIL); CHECK(t >= 5000 && t < 5400);
+    // deny_retry_ms = 0 keeps the old give-up behaviour
+    floor_cfg_t c = floor_cfg_default(); c.deny_retry_ms = 0; floor_node_t o; floor_node_init(&o, &c, 1);
+    floor_node_step(&o, FLOOR_EV_PTT_DOWN, 0);
+    CHECK_EQ(floor_node_step(&o, FLOOR_EV_DENY, 10), FLOOR_ACT_INDICATE_FAIL); CHECK_EQ(o.state, FLOOR_IDLE);
 }
 
 static void test_deny_and_revoke(void)
 {
     floor_node_t n = node(); uint32_t a;
-    floor_node_step(&n, FLOOR_EV_PTT_DOWN, 0);
-    a = floor_node_step(&n, FLOOR_EV_DENY, 10);
-    CHECK_EQ(a, FLOOR_ACT_INDICATE_FAIL); CHECK_EQ(n.state, FLOOR_IDLE);
     // revoke while talking must stop TX
     floor_node_step(&n, FLOOR_EV_PTT_DOWN, 100); floor_node_step(&n, FLOOR_EV_GRANT, 110);
     a = floor_node_step(&n, FLOOR_EV_DENY, 500);
@@ -140,7 +171,7 @@ static void test_pick_deterministic(void)
 
 int main(void)
 {
-    test_happy_path(); test_request_timeout_and_retry(); test_deny_and_revoke();
+    test_happy_path(); test_request_timeout_and_retry(); test_deny_busy_wait_and_retry(); test_deny_and_revoke();
     test_link_loss_never_leaves_tx_running(); test_ptt_up_before_grant_sends_end();
     test_max_talk(); test_repress_during_ending(); test_time_wrap();
     test_coordinator(); test_pick_deterministic();

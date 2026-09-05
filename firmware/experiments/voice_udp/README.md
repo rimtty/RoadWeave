@@ -32,8 +32,22 @@ tx 50 rx 50 bad 0 | echo 50 rtt avg 6 max 14 ms | mouth-to-ear ~88 ms | jb depth
 `mouth-to-ear` は capture → encode → UDP 往復 → jitter buffer → decode → I2S 書き込みまで。
 スピーカーの実音までは I2S DMA 分（約 20〜40 ms）を足す。SSID/パスワードは `sdkconfig`（git 管理外）にだけ入る。
 
+## モード（menuconfig "RoadWeave voice_udp"）
+
+| 設定 | 意味 |
+|---|---|
+| `RW_COORDINATOR=y` | この node が Group Coordinator（floor 管理）。Mac echo のベンチでは y のまま（自分で自分に grant） |
+| `RW_COORDINATOR=n` + `RW_COORD_IP` | 別の node が coordinator。REQUEST/RENEW/END を UDP で送り、GRANT/DENY を待つ |
+| `RW_GROUP_BROADCAST=y` | voice を IPv4 broadcast へ送る（同じ AP 上の 2 台以上） |
+| `RW_TX_ALWAYS=y` | PTT を押しっぱなしとみなす（ベンチ用。120 s ごとに END → 再要求が入る） |
+| `RW_PLAY_ECHO=y` | 自分の sender_id のフレームも再生（Mac echo で自分の声を聞く） |
+
+2 台構成の例: node A `COORDINATOR=y, BROADCAST=y`、node B `COORDINATOR=n, COORD_IP=<A の IP>, BROADCAST=y`。
+
+実装済み: floor control（`components/rwp/floor.h`、BUSY_WAIT 再要求含む）、TX 中の speaker hard mute、
+簡易 PLC（gap で直前フレームを -6 dB ずつ最大 3 frame 繰り返し）。1 秒ごとの行に floor 状態と grant/busy/fail 数が出る。
+
 ## 未実装（P0-B 本実装で入れる）
 
-- floor control（`components/rwp/floor.h`）との結線。今は TX_ALWAYS か PTT 直結。
-- PLC（gap 時は無音）。
-- 2 node 間の直接通信（今は Mac 経由の echo）。
+- targeted PTT（NODE / SUBGROUP 宛）と application 暗号化
+- Opus への切替（`codec` フィールドは header にある）

@@ -10,6 +10,8 @@ floor_cfg_t floor_cfg_default(void)
         .max_talk_ms       = 120000,
         .end_repeat        = 3,
         .end_interval_ms   = 50,
+        .deny_retry_ms     = 250,
+        .busy_wait_max_ms  = 5000,
     };
     return c;
 }
@@ -70,19 +72,35 @@ uint32_t floor_node_step(floor_node_t *n, floor_event_t ev, uint32_t now)
     case FLOOR_REQUESTING:
         if (ev == FLOOR_EV_PTT_UP) {
             // Released before grant: send END so a late GRANT is cleaned up.
+            n->t_busy_since = 0;
             act |= begin_ending(n, now) & ~FLOOR_ACT_STOP_TX;
         } else if (ev == FLOOR_EV_GRANT) {
+            n->t_busy_since = 0;
             enter(n, FLOOR_TALKING, now);
             n->t_talk_start = now;
             n->t_last_renew = now;
             act |= FLOOR_ACT_START_TX | FLOOR_ACT_INDICATE_GRANT;
         } else if (ev == FLOOR_EV_DENY) {
-            act |= fail_to_idle(n, now) & ~FLOOR_ACT_STOP_TX;
+            if (n->cfg.deny_retry_ms) {
+                // Floor is busy but the user is still holding PTT: wait and retry (first deny starts the clock).
+                bool first = (n->t_busy_since == 0);
+                if (first) n->t_busy_since = now ? now : 1;
+                enter(n, FLOOR_BUSY_WAIT, now);
+                act |= first ? FLOOR_ACT_INDICATE_BUSY : 0;
+            } else {
+                act |= fail_to_idle(n, now) & ~FLOOR_ACT_STOP_TX;
+            }
         } else if (ev == FLOOR_EV_TICK && elapsed(now, n->t_entered, n->cfg.grant_timeout_ms)) {
             if (n->requests_sent < n->cfg.request_retries) {
                 n->requests_sent++;
                 n->t_entered = now;
                 act |= FLOOR_ACT_SEND_REQUEST;
+            } else if (n->cfg.deny_retry_ms) {
+                // No answer at all (request or grant lost): keep trying while PTT is held, bounded by busy_wait_max_ms.
+                bool first = (n->t_busy_since == 0);
+                if (first) n->t_busy_since = now ? now : 1;
+                enter(n, FLOOR_BUSY_WAIT, now);
+                act |= first ? FLOOR_ACT_INDICATE_BUSY : 0;
             } else {
                 act |= fail_to_idle(n, now) & ~FLOOR_ACT_STOP_TX;
             }
@@ -102,6 +120,29 @@ uint32_t floor_node_step(floor_node_t *n, floor_event_t ev, uint32_t now)
             } else if (elapsed(now, n->t_last_renew, n->cfg.renew_interval_ms)) {
                 n->t_last_renew = now;
                 act |= FLOOR_ACT_SEND_RENEW;
+            }
+        }
+        break;
+
+    case FLOOR_BUSY_WAIT:
+        if (ev == FLOOR_EV_PTT_UP) {
+            n->t_busy_since = 0;
+            enter(n, FLOOR_IDLE, now);
+        } else if (ev == FLOOR_EV_GRANT) {
+            // a late GRANT for our stream (coordinator freed up right after the DENY)
+            n->t_busy_since = 0;
+            enter(n, FLOOR_TALKING, now);
+            n->t_talk_start = now;
+            n->t_last_renew = now;
+            act |= FLOOR_ACT_START_TX | FLOOR_ACT_INDICATE_GRANT;
+        } else if (ev == FLOOR_EV_TICK) {
+            if (elapsed(now, n->t_busy_since, n->cfg.busy_wait_max_ms)) {
+                n->t_busy_since = 0;
+                act |= fail_to_idle(n, now) & ~FLOOR_ACT_STOP_TX;
+            } else if (elapsed(now, n->t_entered, n->cfg.deny_retry_ms)) {
+                n->requests_sent = 1;                    // same stream_id: coordinator treats it as a fresh request
+                enter(n, FLOOR_REQUESTING, now);
+                act |= FLOOR_ACT_SEND_REQUEST;
             }
         }
         break;

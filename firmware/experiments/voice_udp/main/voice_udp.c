@@ -15,6 +15,7 @@
 #include "driver/gpio.h"
 #include "lwip/sockets.h"
 #include "rwp.h"
+#include "floor.h"
 #include "adpcm.h"
 #include "jitter.h"
 #include "sdkconfig.h"
@@ -23,6 +24,27 @@
 #define BLOCK_MS 20
 #define BLOCK_SAMPLES (FS * BLOCK_MS / 1000)
 
+#ifdef CONFIG_RW_COORDINATOR
+#define RW_COORDINATOR 1
+#else
+#define RW_COORDINATOR 0
+#endif
+#ifdef CONFIG_RW_GROUP_BROADCAST
+#define RW_GROUP_BROADCAST 1
+#else
+#define RW_GROUP_BROADCAST 0
+#endif
+#ifdef CONFIG_RW_TX_ALWAYS
+#define RW_TX_ALWAYS 1
+#else
+#define RW_TX_ALWAYS 0
+#endif
+#ifdef CONFIG_RW_PLAY_ECHO
+#define RW_PLAY_ECHO 1
+#else
+#define RW_PLAY_ECHO 0
+#endif
+
 static const char *TAG = "voice_udp";
 static i2s_chan_handle_t s_rx, s_tx;
 static int s_sock = -1;
@@ -30,12 +52,79 @@ static struct sockaddr_in s_peer;
 static jb_t s_jb;
 static adpcm_state_t s_enc;
 static SemaphoreHandle_t s_jb_lock;
+static floor_node_t s_fn;
+static floor_coord_t s_coord;
+static struct sockaddr_in s_coord_addr, s_bcast;
+static volatile uint32_t st_ctrl_tx = 0, st_ctrl_rx = 0, st_grants = 0, st_denies = 0, st_busy = 0, st_fail = 0;
+static int16_t s_last_out[BLOCK_SAMPLES]; static int s_plc_count = 0;
 
 static volatile uint32_t st_tx = 0, st_rx = 0, st_rx_bad = 0, st_echo = 0;
 static volatile int64_t st_rtt_sum = 0, st_rtt_max = 0;
 static volatile int64_t st_m2e_sum = 0; static volatile uint32_t st_m2e_n = 0;
 
 static uint32_t now_ms(void) { return (uint32_t)(esp_timer_get_time() / 1000); }
+
+static void send_control(uint8_t ctrl, uint32_t stream_id, uint32_t lease_ms, const struct sockaddr_in *to)
+{
+    rwp_control_t c = { .ctrl = ctrl, .stream_id = stream_id, .lease_ms = lease_ms }; uint8_t body[RWP_CONTROL_LEN];
+    rwp_control_encode(body, sizeof body, &c);
+    rwp_header_t h = { .version = RWP_VERSION, .type = RWP_TYPE_CONTROL, .group_id = CONFIG_RW_GROUP_ID, .sender_id = CONFIG_RW_SENDER_ID,
+                       .target_type = RWP_TARGET_NODE, .target_id = 1, .stream_id = stream_id, .capture_time = now_ms() };
+    uint8_t pkt[RWP_HEADER_LEN + RWP_CONTROL_LEN]; int n = rwp_encode(pkt, sizeof pkt, &h, body, sizeof body);
+    if (n > 0 && sendto(s_sock, pkt, (size_t)n, 0, (const struct sockaddr *)to, sizeof *to) == n) st_ctrl_tx++;
+}
+
+static void apply_actions(uint32_t act);
+
+// Coordinator side: handle a control/voice packet from `from` (also used for our own requests, in-process).
+static void coord_handle(const rwp_header_t *h, const uint8_t *pl, const struct sockaddr_in *from)
+{
+    if (h->type == RWP_TYPE_VOICE) { floor_coord_renew(&s_coord, h->sender_id, h->stream_id, now_ms()); return; }
+    rwp_control_t c; if (rwp_control_decode(pl, h->payload_len, &c) != RWP_OK) return;
+    if (c.ctrl == RWP_CTRL_FLOOR_REQUEST) {
+        floor_coord_result_t r = floor_coord_request(&s_coord, h->sender_id, c.stream_id, now_ms());
+        if (h->sender_id == CONFIG_RW_SENDER_ID) {   // our own request: answer in-process
+            apply_actions(floor_node_step(&s_fn, r == FLOOR_COORD_GRANT ? FLOOR_EV_GRANT : FLOOR_EV_DENY, now_ms()));
+            return;
+        }
+        send_control(r == FLOOR_COORD_GRANT ? RWP_CTRL_FLOOR_GRANT : RWP_CTRL_FLOOR_DENY, c.stream_id, s_coord.cfg.lease_ms, from);
+    } else if (c.ctrl == RWP_CTRL_FLOOR_RENEW) floor_coord_renew(&s_coord, h->sender_id, c.stream_id, now_ms());
+    else if (c.ctrl == RWP_CTRL_PTT_END) floor_coord_end(&s_coord, h->sender_id, c.stream_id);
+}
+
+// Node side: perform the actions the floor FSM asked for.
+static bool s_tx_running = false;
+static void apply_actions(uint32_t act)
+{
+    if (act & FLOOR_ACT_SEND_REQUEST) {
+#if RW_COORDINATOR
+        rwp_control_t c = { .ctrl = RWP_CTRL_FLOOR_REQUEST, .stream_id = s_fn.stream_id }; uint8_t body[RWP_CONTROL_LEN];
+        rwp_control_encode(body, sizeof body, &c);
+        rwp_header_t h = { .type = RWP_TYPE_CONTROL, .sender_id = CONFIG_RW_SENDER_ID, .stream_id = s_fn.stream_id, .payload_len = RWP_CONTROL_LEN };
+        coord_handle(&h, body, NULL);
+#else
+        send_control(RWP_CTRL_FLOOR_REQUEST, s_fn.stream_id, 0, &s_coord_addr);
+#endif
+    }
+    if (act & FLOOR_ACT_START_TX) { s_tx_running = true; adpcm_state_init(&s_enc); st_grants++; }
+    if (act & FLOOR_ACT_STOP_TX) s_tx_running = false;
+    if (act & FLOOR_ACT_SEND_RENEW) {
+#if RW_COORDINATOR
+        floor_coord_renew(&s_coord, CONFIG_RW_SENDER_ID, s_fn.stream_id, now_ms());
+#else
+        send_control(RWP_CTRL_FLOOR_RENEW, s_fn.stream_id, 0, &s_coord_addr);
+#endif
+    }
+    if (act & FLOOR_ACT_SEND_END) {
+#if RW_COORDINATOR
+        floor_coord_end(&s_coord, CONFIG_RW_SENDER_ID, s_fn.stream_id);
+#else
+        send_control(RWP_CTRL_PTT_END, s_fn.stream_id, 0, &s_coord_addr);
+#endif
+    }
+    if (act & FLOOR_ACT_INDICATE_BUSY) st_busy++;
+    if (act & FLOOR_ACT_INDICATE_FAIL) st_fail++;
+}
 
 // ---------------- Wi-Fi ----------------
 static EventGroupHandle_t s_ev; enum { EV_GOT_IP = 1 };
@@ -98,7 +187,7 @@ static void i2s_start(void)
 
 static bool ptt_pressed(void)
 {
-#if CONFIG_RW_TX_ALWAYS
+#if RW_TX_ALWAYS
     return true;
 #elif CONFIG_RW_PTT_GPIO >= 0
     return gpio_get_level(CONFIG_RW_PTT_GPIO) == 0;
@@ -126,13 +215,33 @@ static void rx_task(void *arg)
         if (n <= 0) continue;
         rwp_header_t h; const uint8_t *pl;
         if (rwp_decode(buf, (size_t)n, &h, &pl) != RWP_OK) { st_rx_bad++; continue; }
+        if (h.group_id != CONFIG_RW_GROUP_ID) continue;
+        bool echo = (h.sender_id == CONFIG_RW_SENDER_ID);
+        if (h.type == RWP_TYPE_CONTROL) {
+            st_ctrl_rx++;
+            if (echo) continue;                                   // our own control echoed by the Mac: ignore
+#if RW_COORDINATOR
+            xSemaphoreTake(s_jb_lock, portMAX_DELAY); coord_handle(&h, pl, &from); xSemaphoreGive(s_jb_lock);
+#else
+            rwp_control_t c;
+            if (rwp_control_decode(pl, h.payload_len, &c) == RWP_OK && c.stream_id == s_fn.stream_id) {
+                xSemaphoreTake(s_jb_lock, portMAX_DELAY);
+                if (c.ctrl == RWP_CTRL_FLOOR_GRANT) apply_actions(floor_node_step(&s_fn, FLOOR_EV_GRANT, now_ms()));
+                else if (c.ctrl == RWP_CTRL_FLOOR_DENY) apply_actions(floor_node_step(&s_fn, FLOOR_EV_DENY, now_ms()));
+                xSemaphoreGive(s_jb_lock);
+            }
+#endif
+            continue;
+        }
         if (h.type != RWP_TYPE_VOICE || h.codec != RWP_CODEC_IMA_ADPCM) continue;
         st_rx++;
-        bool echo = (h.sender_id == CONFIG_RW_SENDER_ID);
+#if RW_COORDINATOR
+        if (!echo) { xSemaphoreTake(s_jb_lock, portMAX_DELAY); coord_handle(&h, pl, &from); xSemaphoreGive(s_jb_lock); }
+#endif
         if (echo) {
             int64_t rtt = (int32_t)(now_ms() - h.capture_time);
             st_echo++; st_rtt_sum += rtt; if (rtt > st_rtt_max) st_rtt_max = rtt;
-#if !CONFIG_RW_PLAY_ECHO
+#if !RW_PLAY_ECHO
             continue;
 #endif
         }
@@ -158,18 +267,35 @@ static void audio_task(void *arg)
         uint32_t t_cap = now_ms();
         for (int i = 0; i < BLOCK_SAMPLES; i++) pcm[i] = hpf((int16_t)(rxbuf[2 * i] >> 16));
 
-        bool tx = ptt_pressed();
-        if (tx && !was_tx) { stream_id = t_cap ? t_cap : 1; seq = 0; adpcm_state_init(&s_enc); }
+        // floor control: physical PTT -> FSM events; TX only while the FSM says TALKING
+        bool ptt = ptt_pressed();
+        xSemaphoreTake(s_jb_lock, portMAX_DELAY);
+        if (ptt != was_tx) apply_actions(floor_node_step(&s_fn, ptt ? FLOOR_EV_PTT_DOWN : FLOOR_EV_PTT_UP, t_cap));
+        apply_actions(floor_node_step(&s_fn, FLOOR_EV_TICK, t_cap));
+#if RW_COORDINATOR
+        floor_coord_tick(&s_coord, t_cap);
+#endif
+        bool tx = s_tx_running;
+        if (tx && s_fn.state != FLOOR_TALKING) tx = false;   // never send without the floor
+        xSemaphoreGive(s_jb_lock);
         if (tx) {
+            if (stream_id != s_fn.stream_id) { stream_id = s_fn.stream_id; seq = 0; }
             rwp_header_t h = { .version = RWP_VERSION, .type = RWP_TYPE_VOICE, .codec = RWP_CODEC_IMA_ADPCM,
                 .flags = (uint16_t)(seq == 0 ? RWP_FLAG_START : 0), .group_id = CONFIG_RW_GROUP_ID,
                 .sender_id = CONFIG_RW_SENDER_ID, .target_type = RWP_TARGET_GROUP, .target_id = 0,
                 .stream_id = stream_id, .sequence = seq++, .capture_time = t_cap };
             uint8_t blk[164]; size_t bl = adpcm_encode_block(&s_enc, pcm, BLOCK_SAMPLES, blk, sizeof blk);
             int n = rwp_encode(pkt, sizeof pkt, &h, blk, bl);
-            if (n > 0 && sendto(s_sock, pkt, (size_t)n, 0, (struct sockaddr *)&s_peer, sizeof s_peer) == n) st_tx++;
+            const struct sockaddr_in *dst = RW_GROUP_BROADCAST ? &s_bcast : &s_peer;
+            if (n > 0 && sendto(s_sock, pkt, (size_t)n, 0, (const struct sockaddr *)dst, sizeof *dst) == n) st_tx++;
+            xSemaphoreTake(s_jb_lock, portMAX_DELAY);
+            apply_actions(floor_node_step(&s_fn, FLOOR_EV_VOICE_SENT, t_cap));
+#if RW_COORDINATOR
+            floor_coord_renew(&s_coord, CONFIG_RW_SENDER_ID, stream_id, t_cap);
+#endif
+            xSemaphoreGive(s_jb_lock);
         }
-        was_tx = tx;
+        was_tx = ptt;
 
         // playout: one frame per 20 ms block, clocked by the I2S read
         size_t fl = 0; bool have = false; uint32_t tag = 0;
@@ -177,12 +303,17 @@ static void audio_task(void *arg)
         jb_get_result_t r = jb_get_tag(&s_jb, frame, sizeof frame, &fl, &tag, now_ms());
         xSemaphoreGive(s_jb_lock);
         if (r == JB_GET_FRAME && adpcm_decode_block(frame, fl, out, BLOCK_SAMPLES) == BLOCK_SAMPLES) {
-            have = true;
+            have = true; s_plc_count = 0; memcpy(s_last_out, out, sizeof s_last_out);
             if (tag) { st_m2e_sum += (int32_t)(now_ms() - tag); st_m2e_n++; }   // capture -> this playout call
+        } else if (r == JB_GET_GAP && s_plc_count < 3) {
+            // simple PLC: repeat the last frame with decaying gain (-6 dB per repeat), max 3 frames (60 ms)
+            s_plc_count++;
+            for (int i = 0; i < BLOCK_SAMPLES; i++) out[i] = (int16_t)(s_last_out[i] >> s_plc_count);
+            memcpy(s_last_out, out, sizeof s_last_out); have = true;
         }
         if (s_tx) {
             for (int i = 0; i < BLOCK_SAMPLES; i++) {
-                int32_t v = have && !(tx && !CONFIG_RW_TX_ALWAYS) ? out[i] * CONFIG_RW_OUTPUT_GAIN_PERCENT / 100 : 0;
+                int32_t v = have && !(tx && !RW_TX_ALWAYS) ? out[i] * CONFIG_RW_OUTPUT_GAIN_PERCENT / 100 : 0;   // TX => speaker hard mute
                 if (v > 32767) v = 32767;
                 if (v < -32768) v = -32768;
                 txbuf[2 * i] = v << 16; txbuf[2 * i + 1] = v << 16;
@@ -196,7 +327,9 @@ static void audio_task(void *arg)
             static uint32_t p_echo = 0, p_m2e_n = 0; static int64_t p_rtt = 0, p_m2e = 0;
             uint32_t d_echo = st_echo - p_echo, d_m2e_n = st_m2e_n - p_m2e_n;
             int64_t d_rtt = st_rtt_sum - p_rtt, d_m2e = st_m2e_sum - p_m2e;
-            printf("tx %lu rx %lu bad %lu | 1s: echo %lu rtt avg %lld max %lld ms | mouth-to-ear avg %lld ms | jb depth %u played %lu gap %lu late %lu underrun %lu grow %lu shrink %lu\n",
+            static const char *fs[] = { "IDLE", "REQ", "TALK", "END", "BUSY" };
+            printf("floor %s grants %lu busy %lu fail %lu ctrl tx/rx %lu/%lu | tx %lu rx %lu bad %lu | 1s: echo %lu rtt avg %lld max %lld ms | mouth-to-ear avg %lld ms | jb depth %u played %lu gap %lu late %lu underrun %lu grow %lu shrink %lu\n",
+                   fs[s_fn.state], (unsigned long)st_grants, (unsigned long)st_busy, (unsigned long)st_fail, (unsigned long)st_ctrl_tx, (unsigned long)st_ctrl_rx,
                    (unsigned long)st_tx, (unsigned long)st_rx, (unsigned long)st_rx_bad, (unsigned long)d_echo,
                    d_echo ? (long long)(d_rtt / d_echo) : 0LL, (long long)st_rtt_max,
                    d_m2e_n ? (long long)(d_m2e / d_m2e_n) : 0LL,
@@ -211,7 +344,7 @@ static void audio_task(void *arg)
 void app_main(void)
 {
     ESP_LOGI(TAG, "voice_udp: peer %s:%d sender 0x%08x group 0x%08x tx_always=%d",
-             CONFIG_RW_PEER_IP, CONFIG_RW_UDP_PORT, CONFIG_RW_SENDER_ID, CONFIG_RW_GROUP_ID, CONFIG_RW_TX_ALWAYS);
+             CONFIG_RW_PEER_IP, CONFIG_RW_UDP_PORT, CONFIG_RW_SENDER_ID, CONFIG_RW_GROUP_ID, RW_TX_ALWAYS);
     if (strlen(CONFIG_RW_WIFI_SSID) == 0) { ESP_LOGE(TAG, "set RW_WIFI_SSID / RW_WIFI_PASS via idf.py menuconfig"); return; }
     wifi_start();
 
@@ -223,6 +356,12 @@ void app_main(void)
     s_jb_lock = xSemaphoreCreateMutex();
     jb_init(&s_jb, NULL);
     adpcm_state_init(&s_enc);
+    floor_node_init(&s_fn, NULL, (uint32_t)esp_timer_get_time() | 1u);
+    floor_coord_init(&s_coord, NULL);
+    s_coord_addr = s_peer; s_coord_addr.sin_addr.s_addr = inet_addr(CONFIG_RW_COORD_IP);
+    s_bcast = s_peer; s_bcast.sin_addr.s_addr = htonl(INADDR_BROADCAST);
+    int one = 1; setsockopt(s_sock, SOL_SOCKET, SO_BROADCAST, &one, sizeof one);
+    ESP_LOGI(TAG, "coordinator=%d coord_ip=%s broadcast=%d", RW_COORDINATOR, CONFIG_RW_COORD_IP, RW_GROUP_BROADCAST);
     i2s_start();
     xTaskCreatePinnedToCore(rx_task, "rx", 4096, NULL, 6, NULL, 0);
     xTaskCreatePinnedToCore(audio_task, "audio", 8192, NULL, 7, NULL, 0);

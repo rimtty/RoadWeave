@@ -1,6 +1,6 @@
 # 音声ネットワーク設計
 
-更新日: 2026-09-05  
+更新日: 2026-09-06  
 Protocol working name: RWP/0.1
 
 ## 1. 製品体験
@@ -77,11 +77,17 @@ Opusはspeech向け低bitrateを選べるが、packet overhead、retransmission�
 
 ```text
 IDLE
-  -> PTT_DOWN: FLOOR_REQUEST(stream_id, target)
-  -> GRANTED: local beep/indicator, begin voice
-  -> PTT_UP: PTT_END, stop capture
+  -> PTT_DOWN: FLOOR_REQUEST(stream_id, target)      [REQUESTING]
+  -> GRANTED: local beep/indicator, begin voice      [TALKING]
+  -> DENY or no answer after retries, PTT still held: busy tone once,
+     re-request every deny_retry_ms up to busy_wait_max_ms  [BUSY_WAIT]
+  -> PTT_UP: PTT_END x3, stop capture                [ENDING] -> IDLE
   -> lease expiry/link loss: force stop and return IDLE
 ```
+
+BUSY_WAIT は host simulator（`firmware/sim`）で見つかった 2 つの穴への対処: 相手の PTT_END が全損したときに
+lease 失効（750 ms）まで待って再要求する経路がなかったこと、REQUEST/GRANT がロスで往復しなかったときに
+PTT を押したままでも二度と要求しなかったこと。押している間だけ再要求し、離せば即 IDLE。
 
 暫定timer:
 
@@ -89,6 +95,7 @@ IDLE
 - lease: 750 ms、voice/control packetでrenew
 - max continuous PTT: 120 s、その後warning/renew
 - PTT_ENDを3回短間隔で送るが、受信側はidempotent
+- deny_retry: 250 ms、busy_wait_max: 5 s（実装既定値、`floor_cfg_default()`）
 
 同時requestはCoordinator受信時刻とsender IDでdeterministicに決める。緊急優先は誤操作と権限設計が必要なためP0/P1では入れない。
 

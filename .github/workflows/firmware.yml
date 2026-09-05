@@ -30,6 +30,9 @@ jobs:
       - name: rwp_peer.py self-test
         run: python3 tools/rwp_peer.py selftest
 
+      - name: Host simulator (floor + voice over lossy channel)
+        run: make -C firmware/sim run
+
   build:
     name: ESP-IDF build (esp32s3)
     runs-on: ubuntu-latest
