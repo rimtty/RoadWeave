@@ -11,6 +11,19 @@ on:
       - ".github/workflows/firmware.yml"
 
 jobs:
+  host-tests:
+    name: Host unit tests (rwp)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Run rwp host tests
+        run: make -C firmware/components/rwp/test_host test
+
   build:
     name: ESP-IDF build (esp32s3)
     runs-on: ubuntu-latest
