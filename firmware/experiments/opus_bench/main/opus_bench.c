@@ -45,7 +45,7 @@ static void run_case(const bench_case_t *c, int decoders)
     if (!enc || (err = opus_encoder_init(enc, FS, CHANNELS, OPUS_APPLICATION_VOIP)) != OPUS_OK) {
         printf("encoder init failed: %d\n", err); return;
     }
-    OpusDecoder *dec[2] = {0};
+    OpusDecoder *dec[8] = {0};
     for (int d = 0; d < decoders; d++) {
         dec[d] = heap_caps_malloc((size_t)opus_decoder_get_size(CHANNELS), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
         if (!dec[d] || opus_decoder_init(dec[d], FS, CHANNELS) != OPUS_OK) { printf("decoder init failed\n"); return; }
@@ -116,8 +116,9 @@ void app_main(void)
         run_case(&cases[i], 1);
         vTaskDelay(1);
     }
-    printf("--- 2 simultaneous decoders (voice room worst case) ---\n");
-    bench_case_t two = {12000, 20, 3}; run_case(&two, 2);
+    printf("--- multiple simultaneous decoders (voice room): 1 encoder + N decoders ---\n");
+    const bench_case_t room[] = { {12000, 20, 0}, {12000, 20, 3} };
+    for (int c = 0; c < 2; c++) for (int n = 2; n <= 6; n += 2) { run_case(&room[c], n); vTaskDelay(1); }
     printf("free internal heap after: %u B\n", (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
     printf("=== OPUS_BENCH_DONE ===\n");
 }

@@ -23,6 +23,20 @@ firmware: `firmware/experiments/opus_bench`。
 メモリ: encoder state 24,548 B、decoder state 17,800 B。1 enc + 1 dec で内部 heap 42.5 KiB、1 enc + 2 dec で 60.4 KiB。
 実行後の heap 減少なし（leak なし）。
 
+## 追加計測（2026-09-06）: 1 encoder + N decoders（voice room 想定、12 kbps / 20 ms）
+
+| complexity | decoders | encode | decode avg / stream | 合計（1 core 比） | 内部 heap |
+|---:|---:|---:|---:|---:|---:|
+| 0 | 2 | 18.6% | 3.5% | 25.7% | 60 KB |
+| 0 | 4 | 18.6% | 3.1% | 31.2% | 96 KB |
+| 0 | 6 | 18.6% | 3.0% | **36.6%** | 132 KB |
+| 3 | 2 | 37.1% | 4.4% | 45.9% | 60 KB |
+| 3 | 4 | 37.1% | 4.0% | 53.0% | 96 KB |
+| 3 | 6 | 37.1% | 3.8% | **60.1%** | 132 KB |
+
+decoder は台数が増えても 1 stream あたり 3〜4% で頭打ち（キャッシュが温まる）。6 stream 同時デコードでも codec 合計は
+c0 で 37%、c3 で 60%（core 0 の 1 core 比）。
+
 ## 読み方
 
 - CPU% は「1 core の 20 ms のうち何 % を使うか」。ESP32-S3 は 2 core なので、audio/network を core 0、UI を core 1 に分ければ
