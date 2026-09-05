@@ -41,7 +41,7 @@ typedef enum {
 } jb_get_result_t;
 
 typedef struct {
-    uint32_t put_ok, late, duplicate, too_far, gap, underrun, frames_played, grow, shrink;
+    uint32_t put_ok, late, duplicate, too_far, gap, underrun, frames_played, grow, shrink, trimmed;
     uint16_t depth_ms;   // current target depth
 } jb_stats_t;
 

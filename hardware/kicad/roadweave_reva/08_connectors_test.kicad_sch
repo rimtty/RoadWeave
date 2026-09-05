@@ -1,0 +1,6 @@
+(kicad_sch (version 20231120) (generator "eeschema") (generator_version "8.0")
+  (uuid "0dbb5f11-5c16-4678-af41-c8c3e0655682")
+  (paper "A3")
+  (title_block (title "RoadWeave Rev.A - 08_connectors_test") (rev "A0") (company "RoadWeave") (comment 1 "DRAFT: sheet skeleton generated 2026-09-06, no circuit yet"))
+  (lib_symbols)
+)

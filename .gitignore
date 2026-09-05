@@ -11,3 +11,6 @@ firmware/porting_assistant/
 *.kicad_pcb-bak
 *-backups/
 firmware/halow_examples/
+
+# KiCad app demo folder that was copied into the repo root (2026-09-06); never commit it
+/KiCad/

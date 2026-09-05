@@ -1,0 +1,6 @@
+(kicad_sch (version 20231120) (generator "eeschema") (generator_version "8.0")
+  (uuid "624403ed-4195-4fd9-9a2e-f115a225fec8")
+  (paper "A3")
+  (title_block (title "RoadWeave Rev.A - 03_halow_hc01") (rev "A0") (company "RoadWeave") (comment 1 "DRAFT: sheet skeleton generated 2026-09-06, no circuit yet"))
+  (lib_symbols)
+)

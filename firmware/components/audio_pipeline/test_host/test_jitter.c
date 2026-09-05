@@ -79,10 +79,11 @@ static void test_adaptive_shrink_on_sustained_overdepth(void)
 {
     jb_cfg_t c = jb_cfg_default(); c.target_ms = 60; c.shrink_after_ms = 100; c.shrink_holdoff_ms = 0;
     jb_t jb; jb_init(&jb, &c); uint8_t out[JB_MAX_PAYLOAD]; size_t len; uint32_t t = 1000, seq = 1;
-    for (int i = 0; i < 6; i++) put(&jb, seq++, t, JB_PUT_OK);   // 6 buffered, target 3
+    for (int i = 0; i < 3; i++) put(&jb, seq++, t, JB_PUT_OK);   // exactly target (3) -> playout starts
+    jb_get(&jb, out, sizeof out, &len, t += 20);
     int frames = 0, shr = 0;
     for (int i = 0; i < 12; i++) {
-        put(&jb, seq++, t, JB_PUT_OK);                           // keep depth high
+        put(&jb, seq++, t, JB_PUT_OK); put(&jb, seq++, t, JB_PUT_OK);   // network faster than playout: over-depth builds up
         jb_get_result_t r = jb_get(&jb, out, sizeof out, &len, t += 20);
         if (r == JB_GET_FRAME) frames++;
         shr = (int)jb_stats(&jb)->shrink;
@@ -98,14 +99,14 @@ static void test_underrun_grows_and_holds_off_shrink(void)
     jb_get(&jb, out, sizeof out, &len, t += 20); jb_get(&jb, out, sizeof out, &len, t += 20);
     CHECK_EQ(jb_get(&jb, out, sizeof out, &len, t += 20), JB_GET_UNDERRUN);
     CHECK_EQ(jb_stats(&jb)->depth_ms, 60);                         // grew on underrun
-    // flood frames (continuous sequence): over-depth, but within hold-off => no shrink
+    // over-depth (2 frames in per frame out), but within hold-off => no shrink
     uint32_t seq = 3;
-    for (int i = 0; i < 9; i++) put(&jb, seq++, t, JB_PUT_OK);
-    for (int i = 0; i < 20; i++) { put(&jb, seq++, t, JB_PUT_OK); jb_get(&jb, out, sizeof out, &len, t += 20); }
+    for (int i = 0; i < 3; i++) put(&jb, seq++, t, JB_PUT_OK);
+    for (int i = 0; i < 10; i++) { put(&jb, seq++, t, JB_PUT_OK); put(&jb, seq++, t, JB_PUT_OK); jb_get(&jb, out, sizeof out, &len, t += 20); }
     CHECK_EQ(jb_stats(&jb)->shrink, 0);
-    // after hold-off, sustained over-depth shrinks again (keep the sequence continuous: no gap)
+    // after hold-off, sustained over-depth shrinks again (sequence stays continuous: no gap)
     t += 1000;
-    for (int i = 0; i < 12; i++) { put(&jb, seq++, t, JB_PUT_OK); jb_get(&jb, out, sizeof out, &len, t += 20); }
+    for (int i = 0; i < 12; i++) { put(&jb, seq++, t, JB_PUT_OK); put(&jb, seq++, t, JB_PUT_OK); jb_get(&jb, out, sizeof out, &len, t += 20); }
     CHECK(jb_stats(&jb)->shrink >= 1);
 }
 
@@ -128,6 +129,15 @@ static void test_tag_roundtrip(void)
     CHECK_EQ(jb_get_tag(&jb, out, sizeof out, &len, &tag, 60), JB_GET_UNDERRUN); CHECK_EQ(tag, 0);
 }
 
+static void test_prefill_burst_is_trimmed(void)
+{
+    jb_t jb; jb_init(&jb, NULL); uint8_t out[JB_MAX_PAYLOAD]; size_t len;   // depth 40 ms = 2 frames
+    for (uint32_t sq = 1; sq <= 8; sq++) put(&jb, sq, 0, JB_PUT_OK);       // 8 frames arrive at once
+    CHECK_EQ(jb_get(&jb, out, sizeof out, &len, 20), JB_GET_FRAME);
+    CHECK_EQ(out[0], 6);                                                   // oldest 5 dropped: starts at depth+1 (tolerance)
+    CHECK_EQ(jb_stats(&jb)->trimmed, 5); CHECK_EQ(jb_buffered(&jb), 2);
+}
+
 static void test_bad_args(void)
 {
     jb_t jb; jb_init(&jb, NULL); uint8_t big[JB_MAX_PAYLOAD + 1] = {0};
@@ -140,7 +150,7 @@ int main(void)
 {
     test_prefill_and_in_order(); test_reorder_gap_late_duplicate(); test_too_far_resets();
     test_new_stream_flushes(); test_adaptive_grow_on_late(); test_adaptive_shrink_on_sustained_overdepth();
-    test_underrun_grows_and_holds_off_shrink(); test_seq_wrap(); test_tag_roundtrip(); test_bad_args();
+    test_underrun_grows_and_holds_off_shrink(); test_seq_wrap(); test_tag_roundtrip(); test_prefill_burst_is_trimmed(); test_bad_args();
     printf("test_jitter: %d checks, %d failures\n", g_checks, g_fails);
     return g_fails ? 1 : 0;
 }

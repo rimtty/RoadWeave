@@ -42,6 +42,11 @@ Issue #2（target 09-11）はWM6180到着とRF fixture確保に依存するた�
 | 8 | IMA-ADPCM codecとjitter bufferをpure C + host testで実装（Issue #6の部品） | **完了**: `firmware/components/audio_pipeline`、host test 459 checks PASS |
 | 10 | host simulator（coordinator + 2〜4 node、ロス/遅延/バースト注入） | **完了**: `firmware/sim`、6 シナリオ PASS、CI 実行。BUSY_WAIT 再要求の欠落を発見して修正 |
 | 11 | 消費電力の計測手順 | **完了**: [手順](bringup/power-measurement-plan.md) |
+| 12 | Opus を実パイプラインで計測 | **完了**: audio タスク CPU 21%、mouth-to-ear 84 ms（[記録](bringup/voice-udp-2026-09-06.md)） |
+| 13 | 920 MHz 帯の送信時間制限の一次資料調査 | **完了**: 920.5〜923.5 MHz は総送信時間の制限なし（[まとめ](regulatory-920mhz-japan.md)、[RFQ 下書き](megachips-rfq-draft.md)） |
+| 14 | 位置ビーコン（P3）の pure C 実装 | **完了**: `firmware/components/position`、host test 58 checks |
+| 15 | Rev.A KiCad 骨組み | **生成済み・KiCad 未確認**: `hardware/kicad/roadweave_reva`（この Mac に KiCad なし） |
+| 16 | 2.8 インチタッチディスプレイの選定と LVGL 先行実装 | **選定 docs 作成**（[display-selection](display-selection.md)）、`experiments/ui_lvgl` は作成中 |
 | 9 | UDP音声パイプラインをXIAO内蔵Wi-FiでMacと往復（HaLow代役、Issue #6/#7の前倒し） | **計測済み（アンテナ未装着、ルーター直近）**: 安定 60 s で RTT median 8 ms、mouth-to-ear median 100 / p95 160 ms（jb 80 ms）。floor control + PLC 結線済み。[記録](bringup/voice-udp-2026-09-06.md) |
 
 2〜5 は `feat/p0-prep-rwp-audio`（main へ merge 済み）、6・8・9 は `feat/p0-prep-2` の成果。

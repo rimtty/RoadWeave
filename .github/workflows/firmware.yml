@@ -27,6 +27,9 @@ jobs:
       - name: Run audio_pipeline host tests
         run: make -C firmware/components/audio_pipeline/test_host test
 
+      - name: Run position host tests
+        run: make -C firmware/components/position/test_host test
+
       - name: rwp_peer.py self-test
         run: python3 tools/rwp_peer.py selftest
 

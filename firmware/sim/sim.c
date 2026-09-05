@@ -54,6 +54,7 @@ typedef struct {
     floor_node_t fn; jb_t jb; adpcm_state_t enc;
     bool tx_running; uint32_t seq; uint32_t stream_for_seq;
     uint32_t frames_sent, frames_played, gaps, underruns;
+    uint64_t lat_sum; uint32_t lat_n; uint32_t lat_last_avg;   // playout latency (capture -> playout) of played frames
     bool ptt;                      // physical PTT
     uint32_t tx_without_floor;     // invariant counter
 } node_t;
@@ -97,9 +98,9 @@ static void node_tick(uint32_t now, node_t *n)
         node_apply_actions(now, n, floor_node_step(&n->fn, FLOOR_EV_VOICE_SENT, now));
     }
     // playout clock
-    uint8_t frame[JB_MAX_PAYLOAD]; size_t fl; int16_t out[FRAME_SAMPLES];
-    jb_get_result_t r = jb_get(&n->jb, frame, sizeof frame, &fl, now);
-    if (r == JB_GET_FRAME) { if (adpcm_decode_block(frame, fl, out, FRAME_SAMPLES) == FRAME_SAMPLES) n->frames_played++; }
+    uint8_t frame[JB_MAX_PAYLOAD]; size_t fl; int16_t out[FRAME_SAMPLES]; uint32_t tag = 0;
+    jb_get_result_t r = jb_get_tag(&n->jb, frame, sizeof frame, &fl, &tag, now);
+    if (r == JB_GET_FRAME) { if (adpcm_decode_block(frame, fl, out, FRAME_SAMPLES) == FRAME_SAMPLES) { n->frames_played++; n->lat_sum += now - tag; n->lat_n++; } }
     else if (r == JB_GET_GAP) n->gaps++;
     else if (r == JB_GET_UNDERRUN) n->underruns++;
 }
@@ -114,7 +115,7 @@ static void node_receive(uint32_t now, node_t *n, const uint8_t *d, size_t len)
         if (c.ctrl == RWP_CTRL_FLOOR_GRANT) node_apply_actions(now, n, floor_node_step(&n->fn, FLOOR_EV_GRANT, now));
         else if (c.ctrl == RWP_CTRL_FLOOR_DENY) node_apply_actions(now, n, floor_node_step(&n->fn, FLOOR_EV_DENY, now));
     } else if (h.type == RWP_TYPE_VOICE) {
-        jb_put(&n->jb, h.stream_id ^ (h.sender_id << 8), h.sequence, pl, h.payload_len, now);
+        jb_put_tag(&n->jb, h.stream_id ^ (h.sender_id << 8), h.sequence, pl, h.payload_len, h.capture_time, now);
     }
 }
 
@@ -232,10 +233,15 @@ static void scenario_burst_delay(void)
     uint32_t t = 0; ptt(t, 0, true); for (; t < 8000; t++) step(t);
     node_t *rx = &nodes[1];
     const jb_stats_t *js = jb_stats(&rx->jb);
-    printf("  underruns %u gaps %u grow %u shrink %u depth %u ms\n", js->underrun, js->gap, js->grow, js->shrink, js->depth_ms);
+    // latency of the last 2 seconds only (after the burst settled)
+    rx->lat_sum = 0; rx->lat_n = 0; for (; t < 10000; t++) step(t);
+    uint32_t lat = rx->lat_n ? (uint32_t)(rx->lat_sum / rx->lat_n) : 0;
+    printf("  underruns %u gaps %u grow %u shrink %u trimmed %u depth %u ms | settled playout latency %u ms (base 30 + jitter <=10 + depth %u)\n",
+           js->underrun, js->gap, js->grow, js->shrink, js->trimmed, js->depth_ms, lat, js->depth_ms);
     EXPECT(js->underrun >= 1 && js->underrun <= 3, "expected 1-3 underruns, got %u", js->underrun);
     EXPECT(js->grow >= 1, "depth did not grow after the burst");
     EXPECT(js->depth_ms >= 60, "depth should stay >= 60 ms after trouble, is %u", js->depth_ms);
+    EXPECT(lat <= 30 + 10 + js->depth_ms + 20, "playout latency %u ms did not settle to depth after the burst", lat);
 }
 
 static void scenario_long_random(void)

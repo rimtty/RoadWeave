@@ -105,6 +105,15 @@ jb_get_result_t jb_get_tag(jb_t *jb, uint8_t *payload, size_t cap, size_t *len, 
 
     if (!jb->started) {
         if (buffered < jb->depth_frames) return JB_GET_WAIT;
+        // A burst after a stall can leave many more than `depth` frames queued. Playing them all would
+        // add their age to every later frame; drop the oldest so playout starts near the target depth.
+        // One extra frame is tolerated so a normal start (frames arriving while we wait) is never trimmed.
+        while (buffered > jb->depth_frames + 1) {
+            jb_slot_t *old = slot_for(jb, jb->head_seq);
+            if (old->used && old->seq == jb->head_seq) { old->used = false; jb->st.trimmed++; }
+            jb->head_seq++;
+            buffered = jb_buffered(jb);
+        }
         jb->started = true;
     }
 

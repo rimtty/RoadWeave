@@ -29,6 +29,24 @@ menu "RoadWeave voice_udp"
         bool "Send voice to the IPv4 broadcast address instead of the peer (2+ nodes on one AP)"
         default n
 
+    choice RW_CODEC
+        prompt "Voice codec"
+        default RW_CODEC_ADPCM
+        config RW_CODEC_ADPCM
+            bool "IMA-ADPCM 64 kbps (P0 baseline)"
+        config RW_CODEC_OPUS
+            bool "Opus (libopus fixed-point, 16 kHz)"
+    endchoice
+    config RW_OPUS_BITRATE
+        int "Opus bitrate (bps)"
+        default 12000
+        depends on RW_CODEC_OPUS
+    config RW_OPUS_COMPLEXITY
+        int "Opus complexity 0..10"
+        range 0 10
+        default 0
+        depends on RW_CODEC_OPUS
+
     config RW_TX_ALWAYS
         bool "Hold PTT virtually forever (bench measurement without a switch)"
         default y

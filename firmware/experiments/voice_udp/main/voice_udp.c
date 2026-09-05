@@ -18,6 +18,8 @@
 #include "floor.h"
 #include "adpcm.h"
 #include "jitter.h"
+#include "opus.h"
+#include "esp_heap_caps.h"
 #include "sdkconfig.h"
 
 #define FS 16000
@@ -44,6 +46,11 @@
 #else
 #define RW_PLAY_ECHO 0
 #endif
+#ifdef CONFIG_RW_CODEC_OPUS
+#define RW_CODEC RWP_CODEC_OPUS
+#else
+#define RW_CODEC RWP_CODEC_IMA_ADPCM
+#endif
 
 static const char *TAG = "voice_udp";
 static i2s_chan_handle_t s_rx, s_tx;
@@ -57,6 +64,8 @@ static floor_coord_t s_coord;
 static struct sockaddr_in s_coord_addr, s_bcast;
 static volatile uint32_t st_ctrl_tx = 0, st_ctrl_rx = 0, st_grants = 0, st_denies = 0, st_busy = 0, st_fail = 0;
 static int16_t s_last_out[BLOCK_SAMPLES]; static int s_plc_count = 0;
+static OpusEncoder *s_opus_enc; static OpusDecoder *s_opus_dec; static uint32_t s_dec_stream = 0;
+static volatile int64_t st_busy_us = 0;   // audio-task processing time (excl. blocking I2S) per report window
 
 static volatile uint32_t st_tx = 0, st_rx = 0, st_rx_bad = 0, st_echo = 0;
 static volatile int64_t st_rtt_sum = 0, st_rtt_max = 0;
@@ -233,7 +242,7 @@ static void rx_task(void *arg)
 #endif
             continue;
         }
-        if (h.type != RWP_TYPE_VOICE || h.codec != RWP_CODEC_IMA_ADPCM) continue;
+        if (h.type != RWP_TYPE_VOICE || h.codec != RW_CODEC) continue;
         st_rx++;
 #if RW_COORDINATOR
         if (!echo) { xSemaphoreTake(s_jb_lock, portMAX_DELAY); coord_handle(&h, pl, &from); xSemaphoreGive(s_jb_lock); }
@@ -265,6 +274,7 @@ static void audio_task(void *arg)
         size_t got = 0;
         if (i2s_channel_read(s_rx, rxbuf, sizeof rxbuf, &got, 100) != ESP_OK || got != sizeof rxbuf) continue;
         uint32_t t_cap = now_ms();
+        int64_t t_busy0 = esp_timer_get_time();
         for (int i = 0; i < BLOCK_SAMPLES; i++) pcm[i] = hpf((int16_t)(rxbuf[2 * i] >> 16));
 
         // floor control: physical PTT -> FSM events; TX only while the FSM says TALKING
@@ -284,8 +294,11 @@ static void audio_task(void *arg)
                 .flags = (uint16_t)(seq == 0 ? RWP_FLAG_START : 0), .group_id = CONFIG_RW_GROUP_ID,
                 .sender_id = CONFIG_RW_SENDER_ID, .target_type = RWP_TARGET_GROUP, .target_id = 0,
                 .stream_id = stream_id, .sequence = seq++, .capture_time = t_cap };
-            uint8_t blk[164]; size_t bl = adpcm_encode_block(&s_enc, pcm, BLOCK_SAMPLES, blk, sizeof blk);
-            int n = rwp_encode(pkt, sizeof pkt, &h, blk, bl);
+            uint8_t blk[200]; size_t bl;
+            h.codec = RW_CODEC;
+            if (RW_CODEC == RWP_CODEC_OPUS) { int r = opus_encode(s_opus_enc, pcm, BLOCK_SAMPLES, blk, sizeof blk); bl = r > 0 ? (size_t)r : 0; }
+            else bl = adpcm_encode_block(&s_enc, pcm, BLOCK_SAMPLES, blk, sizeof blk);
+            int n = bl ? rwp_encode(pkt, sizeof pkt, &h, blk, bl) : -1;
             const struct sockaddr_in *dst = RW_GROUP_BROADCAST ? &s_bcast : &s_peer;
             if (n > 0 && sendto(s_sock, pkt, (size_t)n, 0, (const struct sockaddr *)dst, sizeof *dst) == n) st_tx++;
             xSemaphoreTake(s_jb_lock, portMAX_DELAY);
@@ -296,21 +309,33 @@ static void audio_task(void *arg)
             xSemaphoreGive(s_jb_lock);
         }
         was_tx = ptt;
+        st_busy_us += esp_timer_get_time() - t_busy0;
 
         // playout: one frame per 20 ms block, clocked by the I2S read
         size_t fl = 0; bool have = false; uint32_t tag = 0;
         xSemaphoreTake(s_jb_lock, portMAX_DELAY);
         jb_get_result_t r = jb_get_tag(&s_jb, frame, sizeof frame, &fl, &tag, now_ms());
         xSemaphoreGive(s_jb_lock);
-        if (r == JB_GET_FRAME && adpcm_decode_block(frame, fl, out, BLOCK_SAMPLES) == BLOCK_SAMPLES) {
-            have = true; s_plc_count = 0; memcpy(s_last_out, out, sizeof s_last_out);
-            if (tag) { st_m2e_sum += (int32_t)(now_ms() - tag); st_m2e_n++; }   // capture -> this playout call
+        int64_t t_proc0 = esp_timer_get_time();
+        if (r == JB_GET_FRAME) {
+            bool ok;
+            if (RW_CODEC == RWP_CODEC_OPUS) ok = opus_decode(s_opus_dec, frame, (opus_int32)fl, out, BLOCK_SAMPLES, 0) == BLOCK_SAMPLES;
+            else ok = adpcm_decode_block(frame, fl, out, BLOCK_SAMPLES) == BLOCK_SAMPLES;
+            if (ok) {
+                have = true; s_plc_count = 0; memcpy(s_last_out, out, sizeof s_last_out);
+                if (tag) { st_m2e_sum += (int32_t)(now_ms() - tag); st_m2e_n++; }   // capture -> this playout call
+            }
         } else if (r == JB_GET_GAP && s_plc_count < 3) {
-            // simple PLC: repeat the last frame with decaying gain (-6 dB per repeat), max 3 frames (60 ms)
             s_plc_count++;
-            for (int i = 0; i < BLOCK_SAMPLES; i++) out[i] = (int16_t)(s_last_out[i] >> s_plc_count);
-            memcpy(s_last_out, out, sizeof s_last_out); have = true;
+            if (RW_CODEC == RWP_CODEC_OPUS) {
+                have = opus_decode(s_opus_dec, NULL, 0, out, BLOCK_SAMPLES, 0) == BLOCK_SAMPLES;   // native Opus PLC
+            } else {
+                // simple PLC: repeat the last frame with decaying gain (-6 dB per repeat), max 3 frames (60 ms)
+                for (int i = 0; i < BLOCK_SAMPLES; i++) out[i] = (int16_t)(s_last_out[i] >> s_plc_count);
+                memcpy(s_last_out, out, sizeof s_last_out); have = true;
+            }
         }
+        st_busy_us += esp_timer_get_time() - t_proc0;
         if (s_tx) {
             for (int i = 0; i < BLOCK_SAMPLES; i++) {
                 int32_t v = have && !(tx && !RW_TX_ALWAYS) ? out[i] * CONFIG_RW_OUTPUT_GAIN_PERCENT / 100 : 0;   // TX => speaker hard mute
@@ -328,6 +353,7 @@ static void audio_task(void *arg)
             uint32_t d_echo = st_echo - p_echo, d_m2e_n = st_m2e_n - p_m2e_n;
             int64_t d_rtt = st_rtt_sum - p_rtt, d_m2e = st_m2e_sum - p_m2e;
             static const char *fs[] = { "IDLE", "REQ", "TALK", "END", "BUSY" };
+            printf("codec %s cpu %2lld%% | ", RW_CODEC == RWP_CODEC_OPUS ? "opus" : "adpcm", (long long)(st_busy_us / 10000)); st_busy_us = 0;
             printf("floor %s grants %lu busy %lu fail %lu ctrl tx/rx %lu/%lu | tx %lu rx %lu bad %lu | 1s: echo %lu rtt avg %lld max %lld ms | mouth-to-ear avg %lld ms | jb depth %u played %lu gap %lu late %lu underrun %lu grow %lu shrink %lu\n",
                    fs[s_fn.state], (unsigned long)st_grants, (unsigned long)st_busy, (unsigned long)st_fail, (unsigned long)st_ctrl_tx, (unsigned long)st_ctrl_rx,
                    (unsigned long)st_tx, (unsigned long)st_rx, (unsigned long)st_rx_bad, (unsigned long)d_echo,
@@ -356,6 +382,20 @@ void app_main(void)
     s_jb_lock = xSemaphoreCreateMutex();
     jb_init(&s_jb, NULL);
     adpcm_state_init(&s_enc);
+#ifdef CONFIG_RW_CODEC_OPUS
+    int oe = 0;
+    s_opus_enc = heap_caps_malloc((size_t)opus_encoder_get_size(1), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    s_opus_dec = heap_caps_malloc((size_t)opus_decoder_get_size(1), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    if (!s_opus_enc || !s_opus_dec || (oe = opus_encoder_init(s_opus_enc, FS, 1, OPUS_APPLICATION_VOIP)) != OPUS_OK
+        || opus_decoder_init(s_opus_dec, FS, 1) != OPUS_OK) { ESP_LOGE(TAG, "opus init failed %d", oe); return; }
+    opus_encoder_ctl(s_opus_enc, OPUS_SET_BITRATE(CONFIG_RW_OPUS_BITRATE));
+    opus_encoder_ctl(s_opus_enc, OPUS_SET_COMPLEXITY(CONFIG_RW_OPUS_COMPLEXITY));
+    opus_encoder_ctl(s_opus_enc, OPUS_SET_SIGNAL(OPUS_SIGNAL_VOICE));
+    opus_encoder_ctl(s_opus_enc, OPUS_SET_INBAND_FEC(0));
+    ESP_LOGI(TAG, "codec: opus %d bps complexity %d", CONFIG_RW_OPUS_BITRATE, CONFIG_RW_OPUS_COMPLEXITY);
+#else
+    ESP_LOGI(TAG, "codec: IMA-ADPCM");
+#endif
     floor_node_init(&s_fn, NULL, (uint32_t)esp_timer_get_time() | 1u);
     floor_coord_init(&s_coord, NULL);
     s_coord_addr = s_peer; s_coord_addr.sin_addr.s_addr = inet_addr(CONFIG_RW_COORD_IP);
@@ -364,5 +404,5 @@ void app_main(void)
     ESP_LOGI(TAG, "coordinator=%d coord_ip=%s broadcast=%d", RW_COORDINATOR, CONFIG_RW_COORD_IP, RW_GROUP_BROADCAST);
     i2s_start();
     xTaskCreatePinnedToCore(rx_task, "rx", 4096, NULL, 6, NULL, 0);
-    xTaskCreatePinnedToCore(audio_task, "audio", 8192, NULL, 7, NULL, 0);
+    xTaskCreatePinnedToCore(audio_task, "audio", 49152, NULL, 7, NULL, 0);   // libopus (USE_ALLOCA) needs ~30 KB of stack
 }
