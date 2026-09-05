@@ -40,7 +40,7 @@ Issue #2（target 09-11）はWM6180到着とRF fixture確保に依存するた�
 | 6 | HT-HC01P HATの40 pin→SPI/BUSY/RESET_N/WAKE対応を確認し`gpio-allocation.md`へ追記 | **半分完了**: mini PCIe側はpin mapで確定、Heltec BCFとdraft profileを`firmware/boards/heltec_hc01p/`に配置。40 pin header側は回路図が公開されていないため**テスターで実測**（手順は同READMEに記載） |
 | 7 | RF fixture発注: U.FL(MHF1)–SMA pigtail x3、SMA 50 ohm終端 x3、SMA 30 dB固定attenuator(2 W) x2、SMA F-F barrel x1 | 未発注 |
 | 8 | IMA-ADPCM codecとjitter bufferをpure C + host testで実装（Issue #6の部品） | **完了**: `firmware/components/audio_pipeline`、host test 459 checks PASS |
-| 9 | UDP音声パイプラインをXIAO内蔵Wi-FiでMacと往復（HaLow代役、Issue #6/#7の前倒し） | **firmware/tool完成・Wi-Fi設定待ち**: `firmware/experiments/voice_udp` + `tools/rwp_peer.py`（echo / record / send） |
+| 9 | UDP音声パイプラインをXIAO内蔵Wi-FiでMacと往復（HaLow代役、Issue #6/#7の前倒し） | **初回計測済み（アンテナ未装着）**: 健全区間で RTT 26〜59 ms。[記録](bringup/voice-udp-2026-09-06.md)。アンテナ装着後に再計測 |
 
 2〜5 は `feat/p0-prep-rwp-audio`（main へ merge 済み）、6・8・9 は `feat/p0-prep-2` の成果。
 

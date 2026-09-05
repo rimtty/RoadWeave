@@ -34,7 +34,6 @@ static SemaphoreHandle_t s_jb_lock;
 static volatile uint32_t st_tx = 0, st_rx = 0, st_rx_bad = 0, st_echo = 0;
 static volatile int64_t st_rtt_sum = 0, st_rtt_max = 0;
 static volatile int64_t st_m2e_sum = 0; static volatile uint32_t st_m2e_n = 0;
-static volatile uint32_t s_last_echo_capture = 0; static volatile bool s_have_echo_capture = false;
 
 static uint32_t now_ms(void) { return (uint32_t)(esp_timer_get_time() / 1000); }
 
@@ -138,9 +137,9 @@ static void rx_task(void *arg)
 #endif
         }
         xSemaphoreTake(s_jb_lock, portMAX_DELAY);
-        jb_put(&s_jb, h.stream_id ^ (h.sender_id << 8), h.sequence, pl, h.payload_len, now_ms());
+        // tag = capture_time for echoed frames (own clock) so playout can measure mouth-to-ear incl. buffering
+        jb_put_tag(&s_jb, h.stream_id ^ (h.sender_id << 8), h.sequence, pl, h.payload_len, echo ? h.capture_time : 0, now_ms());
         xSemaphoreGive(s_jb_lock);
-        if (echo) { s_last_echo_capture = h.capture_time; s_have_echo_capture = true; }
     }
 }
 
@@ -173,13 +172,13 @@ static void audio_task(void *arg)
         was_tx = tx;
 
         // playout: one frame per 20 ms block, clocked by the I2S read
-        size_t fl = 0; bool have = false;
+        size_t fl = 0; bool have = false; uint32_t tag = 0;
         xSemaphoreTake(s_jb_lock, portMAX_DELAY);
-        jb_get_result_t r = jb_get(&s_jb, frame, sizeof frame, &fl, now_ms());
+        jb_get_result_t r = jb_get_tag(&s_jb, frame, sizeof frame, &fl, &tag, now_ms());
         xSemaphoreGive(s_jb_lock);
         if (r == JB_GET_FRAME && adpcm_decode_block(frame, fl, out, BLOCK_SAMPLES) == BLOCK_SAMPLES) {
             have = true;
-            if (s_have_echo_capture) { st_m2e_sum += (int32_t)(now_ms() - s_last_echo_capture); st_m2e_n++; s_have_echo_capture = false; }
+            if (tag) { st_m2e_sum += (int32_t)(now_ms() - tag); st_m2e_n++; }   // capture -> this playout call
         }
         if (s_tx) {
             for (int i = 0; i < BLOCK_SAMPLES; i++) {
@@ -194,11 +193,16 @@ static void audio_task(void *arg)
         if ((uint32_t)(now_ms() - last_report) >= 1000) {
             last_report = now_ms();
             const jb_stats_t *js = jb_stats(&s_jb);
-            printf("tx %lu rx %lu bad %lu | echo %lu rtt avg %lld max %lld ms | mouth-to-ear ~%lld ms | jb depth %u played %lu gap %lu late %lu underrun %lu\n",
-                   (unsigned long)st_tx, (unsigned long)st_rx, (unsigned long)st_rx_bad, (unsigned long)st_echo,
-                   st_echo ? (long long)(st_rtt_sum / st_echo) : 0LL, (long long)st_rtt_max,
-                   st_m2e_n ? (long long)(st_m2e_sum / st_m2e_n) : 0LL,
-                   js->depth_ms, (unsigned long)js->frames_played, (unsigned long)js->gap, (unsigned long)js->late, (unsigned long)js->underrun);
+            static uint32_t p_echo = 0, p_m2e_n = 0; static int64_t p_rtt = 0, p_m2e = 0;
+            uint32_t d_echo = st_echo - p_echo, d_m2e_n = st_m2e_n - p_m2e_n;
+            int64_t d_rtt = st_rtt_sum - p_rtt, d_m2e = st_m2e_sum - p_m2e;
+            printf("tx %lu rx %lu bad %lu | 1s: echo %lu rtt avg %lld max %lld ms | mouth-to-ear avg %lld ms | jb depth %u played %lu gap %lu late %lu underrun %lu grow %lu shrink %lu\n",
+                   (unsigned long)st_tx, (unsigned long)st_rx, (unsigned long)st_rx_bad, (unsigned long)d_echo,
+                   d_echo ? (long long)(d_rtt / d_echo) : 0LL, (long long)st_rtt_max,
+                   d_m2e_n ? (long long)(d_m2e / d_m2e_n) : 0LL,
+                   js->depth_ms, (unsigned long)js->frames_played, (unsigned long)js->gap, (unsigned long)js->late,
+                   (unsigned long)js->underrun, (unsigned long)js->grow, (unsigned long)js->shrink);
+            p_echo = st_echo; p_m2e_n = st_m2e_n; p_rtt = st_rtt_sum; p_m2e = st_m2e_sum;
             st_rtt_max = 0;
         }
     }

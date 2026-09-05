@@ -4,7 +4,7 @@
 jb_cfg_t jb_cfg_default(void)
 {
     jb_cfg_t c = { .frame_ms = 20, .target_ms = 40, .max_ms = 80, .min_ms = 20,
-                   .late_grow_count = 3, .shrink_after_ms = 2000 };
+                   .late_grow_count = 3, .shrink_after_ms = 2000, .shrink_holdoff_ms = 10000 };
     return c;
 }
 
@@ -60,6 +60,11 @@ static void adapt_shrink(jb_t *jb)
 
 jb_put_result_t jb_put(jb_t *jb, uint32_t stream_id, uint32_t seq, const uint8_t *payload, size_t len, uint32_t now)
 {
+    return jb_put_tag(jb, stream_id, seq, payload, len, 0, now);
+}
+
+jb_put_result_t jb_put_tag(jb_t *jb, uint32_t stream_id, uint32_t seq, const uint8_t *payload, size_t len, uint32_t tag, uint32_t now)
+{
     if (!payload || len == 0 || len > JB_MAX_PAYLOAD) return JB_PUT_ERR;
     if (!jb->have_head || jb->stream_id != stream_id) {
         jb_reset(jb, stream_id);
@@ -69,7 +74,7 @@ jb_put_result_t jb_put(jb_t *jb, uint32_t stream_id, uint32_t seq, const uint8_t
     if (seq_after(jb->head_seq, seq)) {
         jb->st.late++;
         if ((uint32_t)(now - jb->t_window) > 1000) { jb->t_window = now; jb->late_window = 0; }
-        if (++jb->late_window >= jb->cfg.late_grow_count) { jb->late_window = 0; adapt_grow(jb); }
+        if (++jb->late_window >= jb->cfg.late_grow_count) { jb->late_window = 0; adapt_grow(jb); jb->t_last_trouble = now ? now : 1; }
         return JB_PUT_LATE;
     }
     // too far ahead: everything in between is lost; restart from here
@@ -80,7 +85,7 @@ jb_put_result_t jb_put(jb_t *jb, uint32_t stream_id, uint32_t seq, const uint8_t
     }
     jb_slot_t *sl = slot_for(jb, seq);
     if (sl->used && sl->seq == seq) { jb->st.duplicate++; return JB_PUT_DUPLICATE; }
-    sl->used = true; sl->seq = seq; sl->len = (uint16_t)len;
+    sl->used = true; sl->seq = seq; sl->len = (uint16_t)len; sl->tag = tag;
     memcpy(sl->payload, payload, len);
     jb->st.put_ok++;
     return JB_PUT_OK;
@@ -88,7 +93,13 @@ jb_put_result_t jb_put(jb_t *jb, uint32_t stream_id, uint32_t seq, const uint8_t
 
 jb_get_result_t jb_get(jb_t *jb, uint8_t *payload, size_t cap, size_t *len, uint32_t now)
 {
-    *len = 0;
+    uint32_t tag;
+    return jb_get_tag(jb, payload, cap, len, &tag, now);
+}
+
+jb_get_result_t jb_get_tag(jb_t *jb, uint8_t *payload, size_t cap, size_t *len, uint32_t *tag, uint32_t now)
+{
+    *len = 0; *tag = 0;
     if (!jb->have_head) return JB_GET_WAIT;
     uint16_t buffered = jb_buffered(jb);
 
@@ -97,8 +108,10 @@ jb_get_result_t jb_get(jb_t *jb, uint8_t *payload, size_t cap, size_t *len, uint
         jb->started = true;
     }
 
-    // adaptive shrink: sustained over-depth means we are adding latency for nothing
-    if (buffered > jb->depth_frames + 1) {
+    // adaptive shrink: sustained over-depth means we are adding latency for nothing.
+    // Never shrink soon after trouble (underrun/gap/grow): that is exactly when depth is needed.
+    bool calm = (uint32_t)(now - jb->t_last_trouble) >= jb->cfg.shrink_holdoff_ms;
+    if (calm && buffered > jb->depth_frames + 1) {
         if (jb->t_over_since == 0) jb->t_over_since = now ? now : 1;
         else if ((uint32_t)(now - jb->t_over_since) >= jb->cfg.shrink_after_ms) {
             adapt_shrink(jb);
@@ -115,13 +128,15 @@ jb_get_result_t jb_get(jb_t *jb, uint8_t *payload, size_t cap, size_t *len, uint
     jb_slot_t *sl = slot_for(jb, jb->head_seq);
     if (sl->used && sl->seq == jb->head_seq) {
         if (cap < sl->len) return JB_GET_UNDERRUN;   // caller bug; treat as dropout
-        memcpy(payload, sl->payload, sl->len); *len = sl->len;
+        memcpy(payload, sl->payload, sl->len); *len = sl->len; *tag = sl->tag;
         sl->used = false; jb->head_seq++; jb->st.frames_played++;
         return JB_GET_FRAME;
     }
     // head missing: is anything newer buffered? then it is a gap; else we ran dry
+    jb->t_last_trouble = now ? now : 1;
     if (buffered > 0) { jb->head_seq++; jb->st.gap++; return JB_GET_GAP; }
     jb->st.underrun++;
+    adapt_grow(jb);               // ran dry => network jitter exceeds depth: buffer more
     jb->started = false;          // re-prefill before resuming
     return JB_GET_UNDERRUN;
 }

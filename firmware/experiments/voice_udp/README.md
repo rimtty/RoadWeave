@@ -6,6 +6,8 @@ Morse component も lwIP の netif を提供するので、HaLow 到着後は so
 
 ## 使い方
 
+**先に XIAO の U.FL に 2.4 GHz アンテナを付ける。** アンテナなしでは数十秒でリンクが崩れ、PA にも負荷がかかる（[2026-09-06 計測](../../../docs/bringup/voice-udp-2026-09-06.md)）。
+
 ```bash
 cd firmware/experiments/voice_udp
 idf.py set-target esp32s3

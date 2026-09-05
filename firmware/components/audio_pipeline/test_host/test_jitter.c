@@ -77,7 +77,7 @@ static void test_adaptive_grow_on_late(void)
 
 static void test_adaptive_shrink_on_sustained_overdepth(void)
 {
-    jb_cfg_t c = jb_cfg_default(); c.target_ms = 60; c.shrink_after_ms = 100;
+    jb_cfg_t c = jb_cfg_default(); c.target_ms = 60; c.shrink_after_ms = 100; c.shrink_holdoff_ms = 0;
     jb_t jb; jb_init(&jb, &c); uint8_t out[JB_MAX_PAYLOAD]; size_t len; uint32_t t = 1000, seq = 1;
     for (int i = 0; i < 6; i++) put(&jb, seq++, t, JB_PUT_OK);   // 6 buffered, target 3
     int frames = 0, shr = 0;
@@ -90,6 +90,25 @@ static void test_adaptive_shrink_on_sustained_overdepth(void)
     CHECK(shr >= 1); CHECK(jb_stats(&jb)->depth_ms < 60); CHECK(jb_stats(&jb)->depth_ms >= 20); CHECK(frames > 0);
 }
 
+static void test_underrun_grows_and_holds_off_shrink(void)
+{
+    jb_cfg_t c = jb_cfg_default(); c.shrink_after_ms = 100; c.shrink_holdoff_ms = 1000;
+    jb_t jb; jb_init(&jb, &c); uint8_t out[JB_MAX_PAYLOAD]; size_t len; uint32_t t = 1000;
+    put(&jb, 1, t, JB_PUT_OK); put(&jb, 2, t, JB_PUT_OK);
+    jb_get(&jb, out, sizeof out, &len, t += 20); jb_get(&jb, out, sizeof out, &len, t += 20);
+    CHECK_EQ(jb_get(&jb, out, sizeof out, &len, t += 20), JB_GET_UNDERRUN);
+    CHECK_EQ(jb_stats(&jb)->depth_ms, 60);                         // grew on underrun
+    // flood frames (continuous sequence): over-depth, but within hold-off => no shrink
+    uint32_t seq = 3;
+    for (int i = 0; i < 9; i++) put(&jb, seq++, t, JB_PUT_OK);
+    for (int i = 0; i < 20; i++) { put(&jb, seq++, t, JB_PUT_OK); jb_get(&jb, out, sizeof out, &len, t += 20); }
+    CHECK_EQ(jb_stats(&jb)->shrink, 0);
+    // after hold-off, sustained over-depth shrinks again (keep the sequence continuous: no gap)
+    t += 1000;
+    for (int i = 0; i < 12; i++) { put(&jb, seq++, t, JB_PUT_OK); jb_get(&jb, out, sizeof out, &len, t += 20); }
+    CHECK(jb_stats(&jb)->shrink >= 1);
+}
+
 static void test_seq_wrap(void)
 {
     jb_t jb; jb_init(&jb, NULL); uint8_t out[JB_MAX_PAYLOAD]; size_t len; uint32_t t = 0;
@@ -97,6 +116,16 @@ static void test_seq_wrap(void)
     CHECK_EQ(jb_get(&jb, out, sizeof out, &len, t += 20), JB_GET_FRAME); CHECK_EQ(out[0], 0xFE);
     CHECK_EQ(jb_get(&jb, out, sizeof out, &len, t += 20), JB_GET_FRAME); CHECK_EQ(out[0], 0xFF);
     CHECK_EQ(jb_get(&jb, out, sizeof out, &len, t += 20), JB_GET_FRAME); CHECK_EQ(out[0], 0);
+}
+
+static void test_tag_roundtrip(void)
+{
+    jb_t jb; jb_init(&jb, NULL); uint8_t p[2] = {1, 2}, out[JB_MAX_PAYLOAD]; size_t len; uint32_t tag = 0;
+    CHECK_EQ(jb_put_tag(&jb, 1, 5, p, 2, 0xCAFE0005, 0), JB_PUT_OK);
+    CHECK_EQ(jb_put_tag(&jb, 1, 6, p, 2, 0xCAFE0006, 0), JB_PUT_OK);
+    CHECK_EQ(jb_get_tag(&jb, out, sizeof out, &len, &tag, 20), JB_GET_FRAME); CHECK_EQ(tag, 0xCAFE0005);
+    CHECK_EQ(jb_get_tag(&jb, out, sizeof out, &len, &tag, 40), JB_GET_FRAME); CHECK_EQ(tag, 0xCAFE0006);
+    CHECK_EQ(jb_get_tag(&jb, out, sizeof out, &len, &tag, 60), JB_GET_UNDERRUN); CHECK_EQ(tag, 0);
 }
 
 static void test_bad_args(void)
@@ -111,7 +140,7 @@ int main(void)
 {
     test_prefill_and_in_order(); test_reorder_gap_late_duplicate(); test_too_far_resets();
     test_new_stream_flushes(); test_adaptive_grow_on_late(); test_adaptive_shrink_on_sustained_overdepth();
-    test_seq_wrap(); test_bad_args();
+    test_underrun_grows_and_holds_off_shrink(); test_seq_wrap(); test_tag_roundtrip(); test_bad_args();
     printf("test_jitter: %d checks, %d failures\n", g_checks, g_fails);
     return g_fails ? 1 : 0;
 }

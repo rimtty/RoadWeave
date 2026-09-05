@@ -20,6 +20,7 @@ typedef struct {
     uint16_t min_ms;          // adaptive lower bound (20)
     uint16_t late_grow_count; // late frames within a window that trigger +1 frame of depth (3)
     uint16_t shrink_after_ms; // sustained over-depth before shrinking one frame (2000)
+    uint16_t shrink_holdoff_ms; // no shrink within this time after an underrun/gap/grow (10000)
 } jb_cfg_t;
 
 jb_cfg_t jb_cfg_default(void);
@@ -47,6 +48,7 @@ typedef struct {
 typedef struct {
     uint16_t len;
     uint32_t seq;
+    uint32_t tag;     // caller data carried with the frame (e.g. capture_time for latency measurement)
     bool     used;
     uint8_t  payload[JB_MAX_PAYLOAD];
 } jb_slot_t;
@@ -62,6 +64,7 @@ typedef struct {
     uint16_t  late_window;  // late count in current window
     uint32_t  t_window;     // window start
     uint32_t  t_over_since; // time buffered depth first exceeded target+1 (0 = not)
+    uint32_t  t_last_trouble; // last underrun/gap/grow time (shrink hold-off reference)
     jb_stats_t st;
 } jb_t;
 
@@ -69,8 +72,12 @@ void jb_init(jb_t *jb, const jb_cfg_t *cfg);
 // Reset for a new stream (flush everything, keep adaptive depth).
 void jb_reset(jb_t *jb, uint32_t stream_id);
 jb_put_result_t jb_put(jb_t *jb, uint32_t stream_id, uint32_t seq, const uint8_t *payload, size_t len, uint32_t now_ms);
+// Same, carrying a caller tag that jb_get_tag() returns with the frame.
+jb_put_result_t jb_put_tag(jb_t *jb, uint32_t stream_id, uint32_t seq, const uint8_t *payload, size_t len, uint32_t tag, uint32_t now_ms);
 // Called once per frame period by the playout clock.
 jb_get_result_t jb_get(jb_t *jb, uint8_t *payload, size_t cap, size_t *len, uint32_t now_ms);
+// Same, also returning the tag stored with the frame (valid only for JB_GET_FRAME).
+jb_get_result_t jb_get_tag(jb_t *jb, uint8_t *payload, size_t cap, size_t *len, uint32_t *tag, uint32_t now_ms);
 // Frames currently buffered ahead of head.
 uint16_t jb_buffered(const jb_t *jb);
 const jb_stats_t *jb_stats(const jb_t *jb);
