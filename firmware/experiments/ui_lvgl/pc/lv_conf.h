@@ -1,0 +1,32 @@
+#ifndef LV_CONF_H
+#define LV_CONF_H
+
+/* Match the embedded renderer; the larger heap is for PC image comparisons. */
+#define LV_COLOR_DEPTH 16
+#define LV_MEM_SIZE (8 * 1024 * 1024)
+#define LV_USE_OS LV_OS_NONE
+#define LV_FONT_MONTSERRAT_14 1
+#define LV_FONT_MONTSERRAT_20 1
+#define LV_FONT_MONTSERRAT_28 1
+#define LV_USE_FONT_COMPRESSED 1
+#define LV_USE_FLOAT 1
+#define LV_USE_LOG 1
+#define LV_LOG_LEVEL LV_LOG_LEVEL_WARN
+#define LV_USE_ASSERT_MALLOC 1
+#define LV_USE_ASSERT_OBJ 1
+#define LV_USE_TEST 1
+#define LV_USE_TEST_SCREENSHOT_COMPARE 1
+#define LV_TEST_SCREENSHOT_CREATE_REFERENCE_IMAGE 0
+#define LV_USE_LODEPNG 1
+#define LV_USE_FS_STDIO 1
+#define LV_FS_STDIO_LETTER 'A'
+#define LV_FS_STDIO_PATH ""
+#define LV_FS_DEFAULT_DRIVER_LETTER 'A'
+#define LV_USE_SDL 1
+#define LV_SDL_INCLUDE_PATH <SDL.h>
+#define LV_SDL_RENDER_MODE LV_DISPLAY_RENDER_MODE_DIRECT
+#define LV_SDL_BUF_COUNT 1
+#define LV_SDL_ACCELERATED 0
+#define LV_SDL_DIRECT_EXIT 0
+
+#endif

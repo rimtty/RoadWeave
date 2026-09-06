@@ -4,6 +4,11 @@
 GROUP（誰が話しているか）/ RADAR（heading-up）/ CONVOY（前後距離）の 3 画面と、下段の MUTE / PTT（長押し）/ NEXT ボタン。
 `RW_UI_SIMULATE=y` なら GPS も無線もなしで 3 台の隊列が動くので、ディスプレイが届けばそのまま見た目を詰められる。
 
+**Windowsで画面確認する場合**はRepoルートから `.\firmware\scripts\ui-sim.ps1` を実行する。
+実機と同じ画面コードをSDLウィンドウで描画し、マウス操作・模擬状態の切替・PNG保存・自動画像比較に対応。
+テストは `.\firmware\scripts\ui-sim.ps1 -Action Test`。
+操作方法・基準画像の更新手順は [PCシミュレーター](pc/README.md) を参照。
+
 ```bash
 cd firmware/experiments/ui_lvgl
 idf.py set-target esp32s3

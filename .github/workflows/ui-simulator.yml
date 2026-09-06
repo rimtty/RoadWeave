@@ -1,0 +1,35 @@
+name: LVGL Windows simulator
+
+on:
+  push:
+    paths:
+      - 'firmware/experiments/ui_lvgl/**'
+      - 'firmware/components/position/**'
+      - 'firmware/scripts/ui-sim.ps1'
+      - '.github/workflows/ui-simulator.yml'
+  pull_request:
+    paths:
+      - 'firmware/experiments/ui_lvgl/**'
+      - 'firmware/components/position/**'
+      - 'firmware/scripts/ui-sim.ps1'
+      - '.github/workflows/ui-simulator.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  simulator:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build and test the shared LVGL UI
+        shell: pwsh
+        run: ./firmware/scripts/ui-sim.ps1 -Action Test
+      - name: Upload rendered frames and test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lvgl-windows-results
+          path: firmware/experiments/ui_lvgl/pc/build/results
