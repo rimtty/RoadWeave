@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""RoadWeave RWP/0.1 peer for the Mac (stdlib only).
+"""RoadWeave RWP/0.1 peer for Windows/macOS/Linux (stdlib only).
 
 Modes:
   echo                 echo every RWP datagram back to its sender (RTT / mouth-to-ear on the node)
@@ -12,7 +12,7 @@ Examples:
   python3 tools/rwp_peer.py record mic.wav
   python3 tools/rwp_peer.py send hello16k.wav --to 192.168.1.42
 """
-import argparse, socket, struct, sys, time, wave
+import argparse, math, socket, struct, sys, time, wave
 
 MAGIC = 0x5257
 VERSION = 1
@@ -127,14 +127,19 @@ class Stats:
 
 def run_echo(args, record=None):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(("0.0.0.0", args.port))
-    print(f"listening on udp/{args.port}  (echo={'off' if args.no_echo else 'on'}{', recording ' + record if record else ''})")
+    sock.bind((args.bind, args.port))
+    sock.settimeout(0.2)
+    deadline = time.monotonic() + args.duration if args.duration else None
+    print(f"listening on {args.bind}:udp/{args.port}  (echo={'off' if args.no_echo else 'on'}{', recording ' + record if record else ''})", flush=True)
     st = Stats(); wav = None; pcm_total = 0
     if record:
         wav = wave.open(record, "wb"); wav.setnchannels(1); wav.setsampwidth(2); wav.setframerate(16000)
     try:
-        while True:
-            d, addr = sock.recvfrom(2048)
+        while deadline is None or time.monotonic() < deadline:
+            try:
+                d, addr = sock.recvfrom(2048)
+            except socket.timeout:
+                continue
             t = time.time()
             p = parse(d)
             if p is None:
@@ -148,6 +153,7 @@ def run_echo(args, record=None):
     except KeyboardInterrupt:
         pass
     finally:
+        sock.close()
         if wav:
             wav.close(); print(f"wrote {record}: {pcm_total / 16000:.1f} s")
 
@@ -192,9 +198,13 @@ def main():
     ap.add_argument("--port", type=int, default=5004)
     ap.add_argument("--to", default="192.168.1.42", help="node IP for send mode")
     ap.add_argument("--no-echo", action="store_true")
+    ap.add_argument("--bind", default="0.0.0.0", help="local IPv4 to listen on (echo/record)")
+    ap.add_argument("--duration", type=float, help="stop echo/record after this many seconds, even without packets")
     ap.add_argument("--group", type=lambda x: int(x, 0), default=1)
     ap.add_argument("--sender", type=lambda x: int(x, 0), default=0x201)
     args = ap.parse_args()
+    if args.duration is not None and (not math.isfinite(args.duration) or args.duration <= 0 or args.mode not in ("echo", "record")):
+        ap.error("--duration must be finite, positive and used with echo or record")
     if args.mode == "selftest": run_selftest()
     elif args.mode == "echo": run_echo(args)
     elif args.mode == "record":

@@ -32,6 +32,35 @@ tx 50 rx 50 bad 0 | echo 50 rtt avg 6 max 14 ms | mouth-to-ear ~88 ms | jb depth
 `mouth-to-ear` は capture → encode → UDP 往復 → jitter buffer → decode → I2S 書き込みまで。
 スピーカーの実音までは I2S DMA 分（約 20〜40 ms）を足す。SSID/パスワードは `sdkconfig`（git 管理外）にだけ入る。
 
+## Windows PowerShell
+
+Repoルートから`. .\firmware\scripts\enter-idf.ps1`で専用環境を起動できる。
+`RW_PEER_IP`にはWindowsのLAN IPv4を設定する。Windowsは有線LANでもよく、ESP32の2.4 GHz Wi-Fiから到達できることが条件。
+
+```powershell
+idf.py -C firmware/experiments/voice_udp menuconfig
+idf.py -C firmware/experiments/voice_udp -p COM4 flash
+```
+
+別ターミナルで環境を起動し、peerを動かす:
+
+```powershell
+python tools/rwp_peer.py echo --duration 90
+```
+
+peer実行中に元のターミナルでログを採る:
+
+```powershell
+python tools/serial_capture.py --port COM4 --reset --seconds 75 --output .private/windows-bench/voice.log
+```
+
+`--duration`はecho/recordを指定秒で終了する。無受信でも終了し、recordのWAV headerを確定する。
+`--bind <Windows LAN IPv4>`で待受interfaceを指定できる。既定は全IPv4 interface。
+echoはADPCM/Opusの両方に対応し、record/sendのcodecはADPCMのみ。
+`--duration`で終了するのはPC側peerだけで、ESP32の送信は停止しない。試験後は`firmware/`のsmoke firmwareへ書き戻す。
+
+Windows Firewallの限定ルール、アンテナ条件、ビルド検証結果は[Windowsベンチ手順](../../../docs/bringup/windows-bench-2026-09-06.md)を参照。
+
 ## モード（menuconfig "RoadWeave voice_udp"）
 
 | 設定 | 意味 |
@@ -50,4 +79,4 @@ tx 50 rx 50 bad 0 | echo 50 rtt avg 6 max 14 ms | mouth-to-ear ~88 ms | jb depth
 ## 未実装（P0-B 本実装で入れる）
 
 - targeted PTT（NODE / SUBGROUP 宛）と application 暗号化
-- Opus への切替（`codec` フィールドは header にある）
+- PC側のOpus WAV record/send（node側の`RW_CODEC_OPUS`は実装済み）

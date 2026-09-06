@@ -1,6 +1,6 @@
 # 開発環境と再現手順
 
-更新日: 2026-09-05
+更新日: 2026-09-06
 
 ## 方針
 
@@ -42,6 +42,20 @@ ls /dev/cu.usbmodem*
 ```
 
 ## Windows（native PowerShell）
+
+2026-09-06に現在のWindows機で導入・実機確認済み。[Windowsベンチ手順と結果](bringup/windows-bench-2026-09-06.md)を参照。
+このPCではRepoルートから次で専用環境へ入れる（PowerShellのプロファイルやシステムPythonは変更しない）。
+
+```powershell
+Set-Location D:\RoadWeave
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+. .\firmware\scripts\enter-idf.ps1
+```
+
+ESP-IDF本体は`D:\Espressif\esp-idf-v5.4.4`、toolsは`D:\Espressif\tools`。
+`enter-idf.ps1`は専用Python環境を選び、公式`export.ps1`を実行してversionを確認する。
+別の設置先では`-EspressifRoot`、`-IdfPath`、`-PythonEnvPath`を指定できる。
+Windowsの`.py`関連付けが別Pythonを指していても、`idf.py`はESP-IDF用Pythonで実行される。
 
 EspressifのWindows向けESP-IDF環境を起動し、ESP-IDF `v5.4.4`がexportされたPowerShellで、次を実行する。`C:\path\to\RoadWeave`は実際のcheckout pathに置き換える。
 

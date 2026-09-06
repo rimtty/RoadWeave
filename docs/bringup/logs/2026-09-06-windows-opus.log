@@ -1,0 +1,100 @@
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x15 (USB_UART_CHIP_RESET),boot:0x8 (SPI_FAST_FLASH_BOOT)
+Saved PC:0x42008387
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x170c
+load:0x403c8700,len:0x4
+load:0x403c8704,len:0xe88
+load:0x403cb700,len:0x316c
+entry 0x403c894c
+I (26) boot: ESP-IDF v5.4.4 2nd stage bootloader
+I (27) boot: compile time Sep  6 2026 18:01:43
+I (27) boot: Multicore bootloader
+I (27) boot: chip revision: v0.2
+I (27) boot: efuse block revision: v1.4
+I (28) qio_mode: Enabling default flash chip QIO
+I (28) boot.esp32s3: Boot SPI Speed : 80MHz
+I (29) boot.esp32s3: SPI Mode       : QIO
+I (29) boot.esp32s3: SPI Flash Size : 8MB
+I (30) boot: Enabling RNG early entropy source...
+I (30) boot: Partition Table:
+I (30) boot: ## Label            Usage          Type ST Offset   Length
+I (31) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (32) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (33) boot:  2 factory          factory app      00 00 00010000 00100000
+I (34) boot: End of partition table
+I (35) esp_image: segment 0: paddr=00010020 vaddr=3c040020 size=0f38ch ( 62348) map
+I (45) esp_image: segment 1: paddr=0001f3b4 vaddr=3fc92400 size=00c64h (  3172) load
+I (46) esp_image: segment 2: paddr=00020020 vaddr=42000020 size=39150h (233808) map
+I (81) esp_image: segment 3: paddr=00059178 vaddr=3fc93064 size=024e0h (  9440) load
+I (83) esp_image: segment 4: paddr=0005b660 vaddr=40374000 size=0e350h ( 58192) load
+I (95) esp_image: segment 5: paddr=000699b8 vaddr=50000000 size=0001ch (    28) load
+I (101) boot: Loaded app from partition at offset 0x10000
+I (101) boot: Disabling RNG early entropy source...
+I (102) octal_psram: vendor id    : 0x0d (AP)
+I (102) octal_psram: dev id       : 0x02 (generation 3)
+I (103) octal_psram: density      : 0x03 (64 Mbit)
+I (103) octal_psram: good-die     : 0x01 (Pass)
+I (104) octal_psram: Latency      : 0x01 (Fixed)
+I (104) octal_psram: VCC          : 0x01 (3V)
+I (105) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (105) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+I (106) octal_psram: BurstLen     : 0x01 (32 Byte)
+I (106) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (107) octal_psram: DriveStrength: 0x00 (1/1)
+I (108) MSPI Timing: PSRAM timing tuning index: 5
+I (108) esp_psram: Found 8MB PSRAM device
+I (108) esp_psram: Speed: 80MHz
+I (109) cpu_start: Multicore app
+I (522) esp_psram: SPI SRAM memory test OK
+I (531) cpu_start: Pro cpu start user code
+I (531) cpu_start: cpu freq: 240000000 Hz
+I (531) app_init: Application information:
+I (532) app_init: Project name:     opus_bench
+I (532) app_init: App version:      03d92e3-dirty
+I (532) app_init: Compile time:     Sep  6 2026 18:01:26
+I (533) app_init: ELF file SHA256:  28fd56fd5...
+I (533) app_init: ESP-IDF:          v5.4.4
+I (534) efuse_init: Min chip rev:     v0.0
+I (534) efuse_init: Max chip rev:     v0.99
+I (534) efuse_init: Chip rev:         v0.2
+I (535) heap_init: Initializing. RAM available for dynamic allocation:
+I (535) heap_init: At 3FC96BB8 len 00052B58 (330 KiB): RAM
+I (535) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (536) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (536) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (537) esp_psram: Adding pool of 8192K of PSRAM memory to heap allocator
+I (538) spi_flash: detected chip: gd
+I (538) spi_flash: flash io: qio
+I (539) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (539) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (540) main_task: Started on CPU0
+I (550) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (550) main_task: Calling app_main()
+
+=== Opus benchmark: libopus 1.5.2-fixed, ESP32-S3 @ 240 MHz, fixed-point, -O2, states in internal RAM ===
+encoder state 24548 B, decoder state 17800 B (16 kHz mono)
+free internal heap before: 354483 B
+| kbps  | frame | cx | dec | encode avg (CPU) | enc max | decode avg (CPU) | dec max | total | actual  | heap   |
+|-------|-------|----|-----|------------------|---------|------------------|---------|-------|---------|--------|
+|  8000 | 20 ms | c0 |  1 |    3710 us (18.5%) |   4062 us |     838 us ( 4.2%) |    897 us | 22.7% |   8.3 kbps |  42504 B |
+| 12000 | 20 ms | c0 |  1 |    3727 us (18.6%) |   4078 us |     860 us ( 4.3%) |    922 us | 22.9% |  12.3 kbps |  42504 B |
+| 16000 | 20 ms | c0 |  1 |    5049 us (25.2%) |   5540 us |    1055 us ( 5.3%) |   1191 us | 30.5% |  16.3 kbps |  42504 B |
+|  8000 | 20 ms | c3 |  1 |    5018 us (25.1%) |   5447 us |     846 us ( 4.2%) |    906 us | 29.3% |   8.1 kbps |  42504 B |
+| 12000 | 20 ms | c3 |  1 |    7426 us (37.1%) |   8072 us |    1048 us ( 5.2%) |   1178 us | 42.4% |  12.1 kbps |  42504 B |
+| 16000 | 20 ms | c3 |  1 |    7460 us (37.3%) |   8063 us |    1069 us ( 5.3%) |   1202 us | 42.6% |  16.1 kbps |  42504 B |
+| 12000 | 20 ms | c5 |  1 |   10416 us (52.1%) |  10991 us |    1060 us ( 5.3%) |   1186 us | 57.4% |  12.4 kbps |  42504 B |
+| 12000 | 40 ms | c0 |  1 |    7067 us (17.7%) |   7748 us |    1262 us ( 3.2%) |   1336 us | 20.8% |  12.2 kbps |  42504 B |
+| 12000 | 40 ms | c3 |  1 |   14469 us (36.2%) |  15543 us |    1642 us ( 4.1%) |   1838 us | 40.3% |  12.1 kbps |  42504 B |
+| 24000 | 20 ms | c3 |  1 |    7503 us (37.5%) |   8098 us |    1103 us ( 5.5%) |   1242 us | 43.0% |  24.2 kbps |  42504 B |
+--- multiple simultaneous decoders (voice room): 1 encoder + N decoders ---
+| 12000 | 20 ms | c0 |  2 |    3728 us (18.6%) |   4079 us |     704 us ( 3.5%) |    922 us | 25.7% |  12.3 kbps |  60428 B |
+| 12000 | 20 ms | c0 |  4 |    3728 us (18.6%) |   4082 us |     626 us ( 3.1%) |    922 us | 31.2% |  12.3 kbps |  96276 B |
+| 12000 | 20 ms | c0 |  6 |    3727 us (18.6%) |   4077 us |     600 us ( 3.0%) |    928 us | 36.6% |  12.3 kbps | 132124 B |
+| 12000 | 20 ms | c3 |  2 |    7422 us (37.1%) |   8052 us |     877 us ( 4.4%) |   1176 us | 45.9% |  12.1 kbps |  60428 B |
+| 12000 | 20 ms | c3 |  4 |    7423 us (37.1%) |   8055 us |     795 us ( 4.0%) |   1178 us | 53.0% |  12.1 kbps |  96276 B |
+| 12000 | 20 ms | c3 |  6 |    7424 us (37.1%) |   8054 us |     767 us ( 3.8%) |   1177 us | 60.1% |  12.1 kbps | 132124 B |
+free internal heap after: 354267 B
+=== OPUS_BENCH_DONE ===
