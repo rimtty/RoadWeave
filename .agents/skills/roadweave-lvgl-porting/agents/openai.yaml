@@ -1,0 +1,4 @@
+interface:
+  display_name: "RoadWeave LVGLレンダリング移植"
+  short_description: "Webデザイン・カタログを共通LVGL UIへ移植し、描画と操作を検証"
+  default_prompt: "$roadweave-lvgl-porting を使って、指定したデザインモデル・カタログのUI/UXをLVGLへ移植し、画像比較・SDL操作・ESP32向けビルドまで検証してください。"
