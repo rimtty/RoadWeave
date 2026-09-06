@@ -1,5 +1,8 @@
 # Windows ESP32ベンチ環境・実測（2026-09-06）
 
+同日追記: 環境整備後に[Windows・実機Wi-Fi/Opus UDP echo試験](windows-wifi-2026-09-06.md)を実施した。
+以下の「無線未測定」は初回の環境整備完了時点の記録。
+
 Repo `03d92e372b1a0aa3aa6683c4bcbf86769ab9a26d`のfirmwareを、native Windows PowerShellでビルド・USB書き込み・計測。
 測定対象のCコードと`sdkconfig.defaults`は変更していない。今回の変更はホストツールとドキュメント。
 

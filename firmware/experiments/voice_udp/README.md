@@ -60,6 +60,7 @@ echoはADPCM/Opusの両方に対応し、record/sendのcodecはADPCMのみ。
 `--duration`で終了するのはPC側peerだけで、ESP32の送信は停止しない。試験後は`firmware/`のsmoke firmwareへ書き戻す。
 
 Windows Firewallの限定ルール、アンテナ条件、ビルド検証結果は[Windowsベンチ手順](../../../docs/bringup/windows-bench-2026-09-06.md)を参照。
+Windowsとの実機UDP往復を確認した[2026-09-06の無線試験結果](../../../docs/bringup/windows-wifi-2026-09-06.md)も参照。
 
 ## モード（menuconfig "RoadWeave voice_udp"）
 

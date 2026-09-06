@@ -1,0 +1,196 @@
+I (159) esp_image: segment 3: paddr=000da5c8 vaddr=3fc9b038 sizeESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x15 (USB_UART_CHIP_RESET),boot:0x8 (SPI_FAST_FLASH_BOOT)
+Saved PC:0x42009dbb
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x170c
+load:0x403c8700,len:0x4
+load:0x403c8704,len:0xe88
+load:0x403cb700,len:0x316c
+entry 0x403c894c
+I (26) boot: ESP-IDF v5.4.4 2nd stage bootloader
+I (27) boot: compile time Sep  6 2026 18:09:43
+I (27) boot: Multicore bootloader
+I (28) boot: chip revision: v0.2
+I (28) boot: efuse block revision: v1.4
+I (29) qio_mode: Enabling default flash chip QIO
+I (29) boot.esp32s3: Boot SPI Speed : 80MHz
+I (30) boot.esp32s3: SPI Mode       : QIO
+I (30) boot.esp32s3: SPI Flash Size : 8MB
+I (30) boot: Enabling RNG early entropy source...
+I (31) boot: Partition Table:
+I (31) boot: ## Label            Usage          Type ST Offset   Length
+I (32) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (33) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (34) boot:  2 factory          factory app      00 00 00010000 00100000
+I (35) boot: End of partition table
+I (35) esp_image: segment 0: paddr=00010020 vaddr=3c0b0020 size=1f5b8h (128440) map
+I (55) esp_image: segment 1: paddr=0002f5e0 vaddr=3fc9a600 size=00a38h (  2616) load
+I (56) esp_image: segment 2: paddr=00030020 vaddr=42000020 size=aa5a0h (697760) map
+I (160) esp_image: segment 3: paddr=000da5c8 vaddr=3fc9b038 size=049c0h ( 18880) load
+I (164) esp_image: segment 4: paddr=000def90 vaddr=40374000 size=165f0h ( 91632) load
+I (182) esp_image: segment 5: paddr=000f5588 vaddr=50000000 size=0001ch (    28) load
+I (192) boot: Loaded app from partition at offset 0x10000
+I (192) boot: Disabling RNG early entropy source...
+I (193) octal_psram: vendor id    : 0x0d (AP)
+I (193) octal_psram: dev id       : 0x02 (generation 3)
+I (194) octal_psram: density      : 0x03 (64 Mbit)
+I (194) octal_psram: good-die     : 0x01 (Pass)
+I (195) octal_psram: Latency      : 0x01 (Fixed)
+I (195) octal_psram: VCC          : 0x01 (3V)
+I (196) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (196) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+I (197) octal_psram: BurstLen     : 0x01 (32 Byte)
+I (197) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (198) octal_psram: DriveStrength: 0x00 (1/1)
+I (199) MSPI Timing: PSRAM timing tuning index: 5
+I (199) esp_psram: Found 8MB PSRAM device
+I (199) esp_psram: Speed: 80MHz
+I (199) cpu_start: Multicore app
+I (613) esp_psram: SPI SRAM memory test OK
+I (621) cpu_start: Pro cpu start user code
+I (621) cpu_start: cpu freq: 240000000 Hz
+I (622) app_init: Application information:
+I (622) app_init: Project name:     voice_udp
+I (622) app_init: App version:      45a6128-dirty
+I (623) app_init: Compile time:     Sep  6 2026 18:16:04
+I (623) app_init: ELF file SHA256:  d3f64bcfd...
+I (624) app_init: ESP-IDF:          v5.4.4
+I (624) efuse_init: Min chip rev:     v0.0
+I (624) efuse_init: Max chip rev:     v0.99
+I (625) efuse_init: Chip rev:         v0.2
+I (625) heap_init: Initializing. RAM available for dynamic allocation:
+I (626) heap_init: At 3FCA68E0 len 00042E30 (267 KiB): RAM
+I (626) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (627) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (627) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (627) esp_psram: Adding pool of 8192K of PSRAM memory to heap allocator
+I (628) spi_flash: detected chip: gd
+I (628) spi_flash: flash io: qio
+I (629) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (630) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (631) main_task: Started on CPU0
+I (641) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (641) main_task: Calling app_main()
+I (641) voice_udp: voice_udp: peer 10.32.1.69:5004 sender 0x00000101 group 0x00000001 tx_always=1
+I (651) pp: pp rom version: e7ae62f
+I (651) net80211: net80211 rom version: e7ae62f
+I (661) wifi:wifi driver task: 3fcb9bf0, prio:23, stack:6656, core=0
+I (661) wifi:wifi firmware version: 8896d66
+I (661) wifi:wifi certification version: v7.0
+I (661) wifi:config NVS flash: enabled
+I (661) wifi:config nano formatting: disabled
+I (661) wifi:Init data frame dynamic rx buffer num: 32
+I (661) wifi:Init static rx mgmt buffer num: 5
+I (661) wifi:Init management short buffer num: 32
+I (661) wifi:Init dynamic tx buffer num: 32
+I (661) wifi:Init static tx FG buffer num: 2
+I (661) wifi:Init static rx buffer size: 1600
+I (661) wifi:Init static rx buffer num: 10
+I (661) wifi:Init dynamic rx buffer num: 32
+I (661) wifi_init: rx ba win: 6
+I (671) wifi_init: accept mbox: 6
+I (671) wifi_init: tcpip mbox: 32
+I (671) wifi_init: udp mbox: 6
+I (671) wifi_init: tcp mbox: 6
+I (671) wifi_init: tcp tx win: 5760
+I (671) wifi_init: tcp rx win: 5760
+I (671) wifi_init: tcp mss: 1440
+I (671) wifi_init: WiFi IRAM OP enabled
+I (671) wifi_init: WiFi RX IRAM OP enabled
+W (671) wifi:Password length matches WPA2 standards, authmode threshold changes from OPEN to WPA2
+I (671) wifi:Set ps type: 0, coexist: 0
+I (671) phy_init: phy_version 711,97bcf0a2,Aug 25 2025,19:04:10
+I (701) phy_init: Saving new calibration data due to checksum failure or outdated calibration data, mode(0)
+I (791) wifi:mode : sta (<mac>)
+I (791) wifi:enable tsf
+I (801) wifi:new:<4,1>, old:<1,0>, ap:<255,255>, sta:<4,1>, prof:1, snd_ch_cfg:0x0
+I (801) wifi:state: init -> auth (0xb0)
+I (851) wifi:state: auth -> assoc (0x0)
+I (871) wifi:state: assoc -> run (0x10)
+I (891) wifi:connected with <test-ssid>, aid = 1, channel 4, 40U, bssid = <mac>
+I (891) wifi:security: WPA2-PSK, phy: bgn, rssi: -88, cipher(pairwise:0x3, group:0x3), pmf:0
+I (901) wifi:pm start, type: 0
+I (901) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us
+I (901) wifi:set rx beacon pti, rx_bcn_pti: 0, bcn_timeout: 25000, mt_pti: 0, mt_time: 10000
+I (921) wifi:AP's beacon interval = 102400 us, DTIM period = 1
+I (4961) esp_netif_handlers: sta ip: 10.32.1.20, mask: 255.255.0.0, gw: 10.32.0.1
+I (4961) voice_udp: got ip 10.32.1.20
+I (4961) voice_udp: codec: opus 12000 bps complexity 0
+I (4961) voice_udp: coordinator=1 coord_ip=192.168.1.11 broadcast=0
+I (4961) gpio: GPIO[44]| InputEn: 1| OutputEn: 0| OpenDrain: 0| Pullup: 1| Pulldown: 0| Intr:0
+I (4961) main_task: Returned from app_main()
+I (5021) wifi:<ba-add>idx:0 (ifx:0, <mac>), tid:6, ssn:2, winSize:64
+I (5661) wifi:<ba-del>idx:0, tid:6
+I (5661) wifi:<ba-add>idx:0 (ifx:0, <mac>), tid:6, ssn:3, winSize:64
+I (5691) wifi:<ba-add>idx:1 (ifx:0, <mac>), tid:0, ssn:0, winSize:64
+codec opus cpu 18% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 18 rx 15 bad 0 | 1s: echo 15 rtt avg 159 max 716 ms | mouth-to-ear avg 44 ms | jb depth 60 played 12 gap 0 late 0 underrun 1 grow 1 shrink 0
+codec opus cpu 21% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 68 rx 67 bad 0 | 1s: echo 52 rtt avg 30 max 65 ms | mouth-to-ear avg 84 ms | jb depth 80 played 60 gap 0 late 0 underrun 2 grow 2 shrink 0
+codec opus cpu 21% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 118 rx 117 bad 0 | 1s: echo 50 rtt avg 31 max 78 ms | mouth-to-ear avg 104 ms | jb depth 80 played 110 gap 0 late 0 underrun 2 grow 2 shrink 0
+codec opus cpu 21% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 168 rx 166 bad 0 | 1s: echo 49 rtt avg 28 max 71 ms | mouth-to-ear avg 104 ms | jb depth 80 played 160 gap 0 late 0 underrun 2 grow 2 shrink 0
+codec opus cpu 21% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 218 rx 215 bad 0 | 1s: echo 49 rtt avg 28 max 64 ms | mouth-to-ear avg 104 ms | jb depth 80 played 210 gap 0 late 0 underrun 2 grow 2 shrink 0
+codec opus cpu 21% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 268 rx 266 bad 0 | 1s: echo 51 rtt avg 34 max 86 ms | mouth-to-ear avg 104 ms | jb depth 80 played 260 gap 0 late 0 underrun 2 grow 2 shrink 0
+codec opus cpu 19% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 318 rx 285 bad 0 | 1s: echo 19 rtt avg 220 max 607 ms | mouth-to-ear avg 236 ms | jb depth 80 played 280 gap 1 late 0 underrun 4 grow 2 shrink 0
+codec opus cpu 18% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 344 rx 299 bad 0 | 1s: echo 14 rtt avg 1145 max 1295 ms | mouth-to-ear avg 1149 ms | jb depth 80 played 291 gap 1 late 0 underrun 6 grow 2 shrink 0
+codec opus cpu 20% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 393 rx 340 bad 0 | 1s: echo 41 rtt avg 979 max 1295 ms | mouth-to-ear avg 981 ms | jb depth 80 played 321 gap 1 late 0 underrun 11 grow 2 shrink 0
+codec opus cpu 19% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 403 rx 357 bad 0 | 1s: echo 17 rtt avg 1227 max 1532 ms | mouth-to-ear avg 1279 ms | jb depth 80 played 334 gap 6 late 0 underrun 13 grow 2 shrink 0
+codec opus cpu 18% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 412 rx 364 bad 0 | 1s: echo 7 rtt avg 1807 max 2124 ms | mouth-to-ear avg 1737 ms | jb depth 80 played 340 gap 8 late 0 underrun 15 grow 2 shrink 0
+codec opus cpu 19% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 434 rx 380 bad 0 | 1s: echo 16 rtt avg 2295 max 2604 ms | mouth-to-ear avg 2453 ms | jb depth 80 played 353 gap 12 late 0 underrun 16 grow 2 shrink 0
+codec opus cpu 20% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 460 rx 398 bad 0 | 1s: echo 18 rtt avg 1716 max 2204 ms | mouth-to-ear avg 2055 ms | jb depth 80 played 362 gap 32 late 0 underrun 17 grow 2 shrink 0
+codec opus cpu 19% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 500 rx 432 bad 0 | 1s: echo 34 rtt avg 1064 max 1457 ms | mouth-to-ear avg 1045 ms | jb depth 80 played 380 gap 37 late 0 underrun 19 grow 2 shrink 0
+codec opus cpu 20% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 550 rx 484 bad 0 | 1s: echo 52 rtt avg 851 max 1095 ms | mouth-to-ear avg 982 ms | jb depth 80 played 408 gap 47 late 0 underrun 22 grow 2 shrink 0
+codec opus cpu 21% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 600 rx 548 bad 0 | 1s: echo 64 rtt avg 511 max 694 ms | mouth-to-ear avg 613 ms | jb depth 80 played 452 gap 47 late 0 underrun 22 grow 2 shrink 0
+codec opus cpu 21% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 650 rx 586 bad 0 | 1s: echo 38 rtt avg 494 max 626 ms | mouth-to-ear avg 596 ms | jb depth 80 played 494 gap 49 late 0 underrun 23 grow 2 shrink 0
+codec opus cpu 19% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 682 rx 604 bad 0 | 1s: echo 18 rtt avg 873 max 1104 ms | mouth-to-ear avg 865 ms | jb depth 80 played 510 gap 49 late 0 underrun 26 grow 2 shrink 0
+codec opus cpu 18% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 696 rx 609 bad 0 | 1s: echo 5 rtt avg 1568 max 1651 ms | mouth-to-ear avg 1704 ms | jb depth 80 played 514 gap 50 late 0 underrun 26 grow 2 shrink 0
+codec opus cpu 19% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 714 rx 621 bad 0 | 1s: echo 12 rtt avg 2015 max 2193 ms | mouth-to-ear avg 2095 ms | jb depth 80 played 523 gap 59 late 0 underrun 28 grow 2 shrink 0
+codec opus cpu 17% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 736 rx 633 bad 0 | 1s: echo 12 rtt avg 1820 max 2211 ms | mouth-to-ear avg 0 ms | jb depth 80 played 523 gap 59 late 0 underrun 28 grow 2 shrink 0
+codec opus cpu 20% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 764 rx 654 bad 0 | 1s: echo 21 rtt avg 1380 max 1712 ms | mouth-to-ear avg 1454 ms | jb depth 80 played 537 gap 77 late 0 underrun 30 grow 2 shrink 0
+codec opus cpu 19% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 788 rx 675 bad 0 | 1s: echo 21 rtt avg 1378 max 1584 ms | mouth-to-ear avg 1480 ms | jb depth 80 played 552 gap 83 late 0 underrun 32 grow 2 shrink 0
+codec opus cpu 19% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 812 rx 696 bad 0 | 1s: echo 21 rtt avg 1353 max 1465 ms | mouth-to-ear avg 1454 ms | jb depth 80 played 569 gap 93 late 0 underrun 33 grow 2 shrink 0
+codec opus cpu 20% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 857 rx 741 bad 0 | 1s: echo 45 rtt avg 947 max 1329 ms | mouth-to-ear avg 1024 ms | jb depth 80 played 592 gap 104 late 0 underrun 34 grow 2 shrink 0
+codec opus cpu 21% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 907 rx 795 bad 0 | 1s: echo 54 rtt avg 578 max 649 ms | mouth-to-ear avg 664 ms | jb depth 80 played 642 gap 104 late 0 underrun 34 grow 2 shrink 0
+codec opus cpu 21% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 957 rx 868 bad 0 | 1s: echo 73 rtt avg 265 max 530 ms | mouth-to-ear avg 375 ms | jb depth 80 played 692 gap 104 late 0 underrun 34 grow 2 shrink 0
+codec opus cpu 21% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1008 rx 901 bad 0 | 1s: echo 33 rtt avg 124 max 459 ms | mouth-to-ear avg 284 ms | jb depth 80 played 732 gap 105 late 0 underrun 35 grow 2 shrink 0
+codec opus cpu 18% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1032 rx 907 bad 0 | 1s: echo 6 rtt avg 801 max 1004 ms | mouth-to-ear avg 819 ms | jb depth 80 played 741 gap 111 late 0 underrun 37 grow 2 shrink 0
+codec opus cpu 18% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1051 rx 924 bad 0 | 1s: echo 17 rtt avg 1700 max 1824 ms | mouth-to-ear avg 1789 ms | jb depth 80 played 749 gap 113 late 0 underrun 38 grow 2 shrink 0
+codec opus cpu 18% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1079 rx 942 bad 0 | 1s: echo 18 rtt avg 1408 max 1766 ms | mouth-to-ear avg 1780 ms | jb depth 80 played 754 gap 116 late 0 underrun 38 grow 2 shrink 0
+codec opus cpu 20% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1117 rx 970 bad 0 | 1s: echo 28 rtt avg 1308 max 1485 ms | mouth-to-ear avg 1412 ms | jb depth 80 played 771 gap 123 late 0 underrun 41 grow 2 shrink 0
+codec opus cpu 19% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1167 rx 1008 bad 0 | 1s: echo 38 rtt avg 840 max 1169 ms | mouth-to-ear avg 952 ms | jb depth 80 played 786 gap 133 late 0 underrun 42 grow 2 shrink 0
+codec opus cpu 20% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1200 rx 1037 bad 0 | 1s: echo 29 rtt avg 1457 max 1599 ms | mouth-to-ear avg 1524 ms | jb depth 80 played 809 gap 133 late 0 underrun 46 grow 2 shrink 0
+codec opus cpu 20% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1229 rx 1060 bad 0 | 1s: echo 23 rtt avg 1353 max 1472 ms | mouth-to-ear avg 1415 ms | jb depth 80 played 831 gap 133 late 0 underrun 49 grow 2 shrink 0
+codec opus cpu 19% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1254 rx 1086 bad 0 | 1s: echo 26 rtt avg 1551 max 2070 ms | mouth-to-ear avg 1511 ms | jb depth 80 played 850 gap 138 late 0 underrun 50 grow 2 shrink 0
+codec opus cpu 20% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1285 rx 1106 bad 0 | 1s: echo 20 rtt avg 1280 max 1548 ms | mouth-to-ear avg 1344 ms | jb depth 80 played 867 gap 149 late 0 underrun 51 grow 2 shrink 0
+codec opus cpu 18% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1304 rx 1117 bad 0 | 1s: echo 11 rtt avg 1536 max 1747 ms | mouth-to-ear avg 1584 ms | jb depth 80 played 872 gap 150 late 0 underrun 52 grow 2 shrink 0
+codec opus cpu 19% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1334 rx 1145 bad 0 | 1s: echo 28 rtt avg 1414 max 1719 ms | mouth-to-ear avg 1524 ms | jb depth 80 played 886 gap 159 late 0 underrun 54 grow 2 shrink 0
+codec opus cpu 17% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1350 rx 1150 bad 0 | 1s: echo 5 rtt avg 1359 max 1535 ms | mouth-to-ear avg 0 ms | jb depth 80 played 886 gap 159 late 0 underrun 54 grow 2 shrink 0
+codec opus cpu 18% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1367 rx 1157 bad 0 | 1s: echo 7 rtt avg 1841 max 2236 ms | mouth-to-ear avg 1864 ms | jb depth 80 played 894 gap 164 late 0 underrun 56 grow 2 shrink 0
+codec opus cpu 19% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1400 rx 1183 bad 0 | 1s: echo 26 rtt avg 1728 max 2164 ms | mouth-to-ear avg 1984 ms | jb depth 80 played 904 gap 172 late 0 underrun 57 grow 2 shrink 0
+codec opus cpu 18% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1416 rx 1195 bad 0 | 1s: echo 12 rtt avg 1069 max 1416 ms | mouth-to-ear avg 1304 ms | jb depth 80 played 909 gap 182 late 0 underrun 58 grow 2 shrink 0
+codec opus cpu 20% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1445 rx 1220 bad 0 | 1s: echo 25 rtt avg 1649 max 1834 ms | mouth-to-ear avg 1697 ms | jb depth 80 played 930 gap 188 late 0 underrun 60 grow 2 shrink 0
+codec opus cpu 20% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1474 rx 1246 bad 0 | 1s: echo 26 rtt avg 1224 max 1645 ms | mouth-to-ear avg 1416 ms | jb depth 80 played 949 gap 206 late 0 underrun 60 grow 2 shrink 0
+codec opus cpu 21% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1521 rx 1270 bad 0 | 1s: echo 24 rtt avg 961 max 1265 ms | mouth-to-ear avg 1113 ms | jb depth 80 played 972 gap 216 late 0 underrun 61 grow 2 shrink 0
+codec opus cpu 19% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1551 rx 1300 bad 0 | 1s: echo 30 rtt avg 1436 max 1657 ms | mouth-to-ear avg 1501 ms | jb depth 80 played 993 gap 225 late 0 underrun 63 grow 2 shrink 0
+codec opus cpu 21% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1602 rx 1354 bad 0 | 1s: echo 54 rtt avg 1101 max 1435 ms | mouth-to-ear avg 1231 ms | jb depth 80 played 1027 gap 231 late 0 underrun 63 grow 2 shrink 0
+codec opus cpu 22% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1652 rx 1398 bad 0 | 1s: echo 44 rtt avg 868 max 967 ms | mouth-to-ear avg 1024 ms | jb depth 80 played 1077 gap 231 late 0 underrun 63 grow 2 shrink 0
+codec opus cpu 19% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1668 rx 1424 bad 0 | 1s: echo 26 rtt avg 1170 max 1468 ms | mouth-to-ear avg 1196 ms | jb depth 80 played 1099 gap 232 late 0 underrun 67 grow 2 shrink 0
+codec opus cpu 19% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1687 rx 1436 bad 0 | 1s: echo 12 rtt avg 1783 max 1945 ms | mouth-to-ear avg 1784 ms | jb depth 80 played 1108 gap 246 late 0 underrun 68 grow 2 shrink 0
+codec opus cpu 19% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1711 rx 1452 bad 0 | 1s: echo 16 rtt avg 1778 max 2375 ms | mouth-to-ear avg 1898 ms | jb depth 80 played 1118 gap 255 late 0 underrun 69 grow 2 shrink 0
+codec opus cpu 20% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1740 rx 1479 bad 0 | 1s: echo 27 rtt avg 1333 max 1796 ms | mouth-to-ear avg 1499 ms | jb depth 80 played 1131 gap 272 late 0 underrun 70 grow 2 shrink 0
+codec opus cpu 22% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1787 rx 1520 bad 0 | 1s: echo 41 rtt avg 740 max 1112 ms | mouth-to-ear avg 887 ms | jb depth 80 played 1165 gap 284 late 0 underrun 72 grow 2 shrink 0
+codec opus cpu 19% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1811 rx 1533 bad 0 | 1s: echo 13 rtt avg 930 max 1244 ms | mouth-to-ear avg 925 ms | jb depth 80 played 1178 gap 291 late 0 underrun 74 grow 2 shrink 0
+codec opus cpu 18% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1828 rx 1535 bad 0 | 1s: echo 2 rtt avg 1494 max 1612 ms | mouth-to-ear avg 0 ms | jb depth 80 played 1178 gap 291 late 0 underrun 74 grow 2 shrink 0
+codec opus cpu 20% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1852 rx 1556 bad 0 | 1s: echo 21 rtt avg 1558 max 1737 ms | mouth-to-ear avg 1741 ms | jb depth 80 played 1192 gap 312 late 0 underrun 76 grow 2 shrink 0
+codec opus cpu 20% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1881 rx 1575 bad 0 | 1s: echo 19 rtt avg 1470 max 1627 ms | mouth-to-ear avg 1590 ms | jb depth 80 played 1213 gap 336 late 0 underrun 77 grow 2 shrink 0
+codec opus cpu 20% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1904 rx 1598 bad 0 | 1s: echo 23 rtt avg 1479 max 1655 ms | mouth-to-ear avg 1640 ms | jb depth 80 played 1230 gap 346 late 0 underrun 78 grow 2 shrink 0
+codec opus cpu 18% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1921 rx 1610 bad 0 | 1s: echo 12 rtt avg 1668 max 1944 ms | mouth-to-ear avg 1794 ms | jb depth 80 played 1236 gap 351 late 0 underrun 79 grow 2 shrink 0
+codec opus cpu 19% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1947 rx 1620 bad 0 | 1s: echo 10 rtt avg 1578 max 1764 ms | mouth-to-ear avg 1650 ms | jb depth 80 played 1242 gap 359 late 0 underrun 80 grow 2 shrink 0
+codec opus cpu 20% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 1971 rx 1640 bad 0 | 1s: echo 20 rtt avg 1360 max 1616 ms | mouth-to-ear avg 1541 ms | jb depth 80 played 1251 gap 371 late 0 underrun 81 grow 2 shrink 0
+codec opus cpu 20% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 2012 rx 1676 bad 0 | 1s: echo 36 rtt avg 1144 max 1388 ms | mouth-to-ear avg 1313 ms | jb depth 80 played 1268 gap 381 late 0 underrun 81 grow 2 shrink 0
+codec opus cpu 21% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 2062 rx 1737 bad 0 | 1s: echo 61 rtt avg 573 max 772 ms | mouth-to-ear avg 743 ms | jb depth 80 played 1306 gap 382 late 0 underrun 81 grow 2 shrink 0
+codec opus cpu 21% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 2112 rx 1800 bad 0 | 1s: echo 63 rtt avg 361 max 513 ms | mouth-to-ear avg 517 ms | jb depth 80 played 1351 gap 382 late 0 underrun 81 grow 2 shrink 0
+codec opus cpu 21% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 2163 rx 1832 bad 0 | 1s: echo 32 rtt avg 277 max 578 ms | mouth-to-ear avg 316 ms | jb depth 80 played 1384 gap 382 late 0 underrun 83 grow 2 shrink 0
+codec opus cpu 19% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 2193 rx 1850 bad 0 | 1s: echo 18 rtt avg 816 max 973 ms | mouth-to-ear avg 870 ms | jb depth 80 played 1400 gap 384 late 0 underrun 86 grow 2 shrink 0
+codec opus cpu 18% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 2215 rx 1862 bad 0 | 1s: echo 12 rtt avg 1398 max 1844 ms | mouth-to-ear avg 1144 ms | jb depth 80 played 1404 gap 387 late 0 underrun 87 grow 2 shrink 0
+codec opus cpu 18% | floor TALK grants 1 busy 0 fail 0 ctrl tx/rx 0/0 | tx 2232 rx 1867 bad 0 | 1s: echo 5 rtt avg 1532 max 1588 ms | mouth-to-ear avg 1604 ms | jb depth 80 played 1409 gap 391 late 0 underrun 88 grow 2 shrink 0
