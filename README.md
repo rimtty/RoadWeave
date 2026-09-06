@@ -29,6 +29,8 @@ LCD、GPS、Opus、録音、メッシュはP0の完了条件に含めません�
 
 ```text
 RoadWeave/
+├── design/                  UI/UXデザイン検討
+│   └── web-poc/            Circle・Pulse・CompassのWeb PoC
 ├── docs/                    設計判断、仕様、試験計画
 │   └── decisions/          変更理由を残すADR
 ├── firmware/                ESP-IDFアプリケーション
@@ -66,6 +68,10 @@ RoadWeave/
 - [ADR-0001: 開発ラインと段階戦略](docs/decisions/0001-development-lines.md)
 - [ADR-0002: WM6180をP0 reference platformにする](docs/decisions/0002-wm6180-reference-platform.md)
 - [ADR-0003: HC01P V2 + HATをbreakoutにする（Proposed）](docs/decisions/0003-hc01p-hat-breakout-and-linux-bridge.md)
+
+## UIデザインの検討
+
+[design/web-poc](design/web-poc/README.md) で、Circle・Pulse・Compassの3案を操作して比較できます。起動手順と検証範囲は各READMEを参照してください。音声・位置・接続は仮データです。
 
 ## 現時点の重要ゲート
 
