@@ -3,7 +3,8 @@
 #include <string.h>
 
 #define EARTH_R_M 6371008.8
-#define DEG2RAD (M_PI / 180.0)
+static const double PI = 3.14159265358979323846; // M_PI is not part of C11.
+#define DEG2RAD (PI / 180.0)
 
 static void put_u16(uint8_t *p, uint16_t v) { p[0] = (uint8_t)(v >> 8); p[1] = (uint8_t)v; }
 static void put_u32(uint8_t *p, uint32_t v) { put_u16(p, (uint16_t)(v >> 16)); put_u16(p + 2, (uint16_t)v); }
@@ -66,8 +67,8 @@ void pos_to_local(const pos_frame_t *f, int32_t lat_e7, int32_t lon_e7, pos_loca
 {
     double lat = lat_e7 * 1e-7 * DEG2RAD, lon = lon_e7 * 1e-7 * DEG2RAD;
     double dlon = lon - f->lon0_rad;
-    if (dlon > M_PI) dlon -= 2 * M_PI;
-    if (dlon < -M_PI) dlon += 2 * M_PI;
+    if (dlon > PI) dlon -= 2 * PI;
+    if (dlon < -PI) dlon += 2 * PI;
     out->east_m  = (float)(dlon * f->cos_lat0 * EARTH_R_M);
     out->north_m = (float)((lat - f->lat0_rad) * EARTH_R_M);
 }

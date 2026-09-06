@@ -4,6 +4,7 @@
 #include <string.h>
 
 #define N 320  // 20 ms @ 16 kHz
+static const double PI = 3.14159265358979323846; // M_PI is not part of C11.
 
 static double snr_db(const int16_t *ref, const int16_t *out, size_t n)
 {
@@ -40,7 +41,7 @@ static void test_silence_and_sine_quality(void)
     adpcm_state_init(&s);
     double worst = 120;
     for (int b = 0; b < 10; b++) {
-        for (int i = 0; i < N; i++) pcm[i] = (int16_t)(16000.0 * sin(2 * M_PI * 440.0 * (b * N + i) / 16000.0));
+        for (int i = 0; i < N; i++) pcm[i] = (int16_t)(16000.0 * sin(2 * PI * 440.0 * (b * N + i) / 16000.0));
         adpcm_encode_block(&s, pcm, N, blk, sizeof blk);
         adpcm_decode_block(blk, 164, dec, N);
         double snr = snr_db(pcm, dec, N);

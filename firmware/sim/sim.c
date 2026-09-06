@@ -17,6 +17,7 @@
 #define FRAME_MS 20
 #define FRAME_SAMPLES 320
 #define Q_CAP 4096
+static const double PI = 3.14159265358979323846; // M_PI is not part of C11.
 
 static uint32_t rng_state = 1;
 static uint32_t rnd(void) { rng_state = rng_state * 1664525u + 1013904223u; return rng_state >> 8; }
@@ -87,7 +88,7 @@ static void node_tick(uint32_t now, node_t *n)
         if (n->fn.state != FLOOR_TALKING) n->tx_without_floor++;
         // one 20 ms voice frame: synthetic tone so the receiver can decode something
         int16_t pcm[FRAME_SAMPLES]; static double ph = 0;
-        for (int i = 0; i < FRAME_SAMPLES; i++) { pcm[i] = (int16_t)(8000 * sin(ph)); ph += 2 * M_PI * 440 / 16000; }
+        for (int i = 0; i < FRAME_SAMPLES; i++) { pcm[i] = (int16_t)(8000 * sin(ph)); ph += 2 * PI * 440 / 16000; }
         uint8_t blk[164]; size_t bl = adpcm_encode_block(&n->enc, pcm, FRAME_SAMPLES, blk, sizeof blk);
         rwp_header_t h = { .version = RWP_VERSION, .type = RWP_TYPE_VOICE, .codec = RWP_CODEC_IMA_ADPCM, .group_id = 1, .sender_id = n->node_id,
                            .target_type = RWP_TARGET_GROUP, .stream_id = n->stream_for_seq, .sequence = n->seq++, .capture_time = now };
@@ -241,7 +242,7 @@ static void scenario_burst_delay(void)
     EXPECT(js->underrun >= 1 && js->underrun <= 3, "expected 1-3 underruns, got %u", js->underrun);
     EXPECT(js->grow >= 1, "depth did not grow after the burst");
     EXPECT(js->depth_ms >= 60, "depth should stay >= 60 ms after trouble, is %u", js->depth_ms);
-    EXPECT(lat <= 30 + 10 + js->depth_ms + 20, "playout latency %u ms did not settle to depth after the burst", lat);
+    EXPECT(lat <= 30u + 10u + js->depth_ms + 20u, "playout latency %u ms did not settle to depth after the burst", lat);
 }
 
 static void scenario_long_random(void)

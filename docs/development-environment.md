@@ -80,6 +80,15 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 
 GitHub Actionsでは、Linux runner上で公式の`espressif/esp-idf-ci-action@v1`を使い、`esp_idf_version: v5.4.4`、`target: esp32s3`、`path: firmware`を固定してbuildする。CIはLinux上のコンパイル再現性を確認するためのもので、実機へのflash、USB monitor、XIAOの8 MiB flash/PSRAM smoke testを代替しない。workflowは`.github/workflows/firmware.yml`にある。
 
+Actionsの対象は次のとおり。ESP32、USB port、AP、SSID/passwordは不要。
+
+- Host tests: RWP/floor、ADPCM/jitter、positionのC単体テスト（ASan/UBSan有効）、損失・遅延を模擬するhost simulator、Python peerのcodec/localhost UDP/WAVテスト。
+- Compile only: `fetch-upstream.sh`でOpus v1.5.2を取得してから`idf.py build`。Opus sourceはGit管理外なのでfresh checkoutでは取得が必要。
+- 実機専用のflash/monitor、Opus実測、I2S mic/amp、Wi-Fi/HaLow実測、Flash/PSRAMの動作確認はActionsでは実行せず、接続済みPCで実施する。
+
+`firmware/**`・`tools/**`・workflowの変更で起動する。Markdownだけの手順・計測結果更新は起動対象外。
+ホストコードは`-std=c11`でコンパイルするため、非標準の`M_PI`へ依存しない。
+
 ## version確認
 
 macOSでは`./scripts/check-toolchain.sh`、Windowsでは`.\scripts\check-toolchain.ps1`を最初に実行する。両方のスクリプトが`toolchain.lock`の`ESP_IDF_VERSION`と`idf.py --version`を照合し、versionが異なる場合はbuildへ進まない。

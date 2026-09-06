@@ -1,18 +1,27 @@
 name: Firmware
 
+# GitHub-hosted runners only: compile and run host/loopback tests.
+# USB flash/monitor, I2S audio, and Wi-Fi/HaLow hardware benchmarks run locally.
+
 on:
   push:
     paths:
       - "firmware/**"
+      - "tools/**"
+      - "!firmware/**/*.md"
+      - "!tools/**/*.md"
       - ".github/workflows/firmware.yml"
   pull_request:
     paths:
       - "firmware/**"
+      - "tools/**"
+      - "!firmware/**/*.md"
+      - "!tools/**/*.md"
       - ".github/workflows/firmware.yml"
 
 jobs:
   host-tests:
-    name: Host unit tests (rwp, audio_pipeline, tools)
+    name: Host tests (no hardware)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -30,14 +39,14 @@ jobs:
       - name: Run position host tests
         run: make -C firmware/components/position/test_host test
 
-      - name: rwp_peer.py self-test
-        run: python3 tools/rwp_peer.py selftest
+      - name: Python peer tests (codec and local UDP loopback)
+        run: python3 -B -m unittest discover -s tools -p test_rwp_peer.py -v
 
       - name: Host simulator (floor + voice over lossy channel)
         run: make -C firmware/sim run
 
   build:
-    name: ESP-IDF build (esp32s3)
+    name: ESP-IDF build (esp32s3, compile only)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -45,6 +54,9 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
+
+      - name: Fetch pinned Opus source
+        run: firmware/components/opus/fetch-upstream.sh
 
       - name: Build firmware
         uses: espressif/esp-idf-ci-action@v1
