@@ -11,8 +11,10 @@
     "start": "wrangler dev --config dist/server/wrangler.json",
     "lint": "oxlint app lib/experience.ts components/ui/slider.tsx",
     "format": "oxfmt",
-    "test": "node --experimental-strip-types --test tests/experience.test.ts",
-    "typecheck": "tsc --noEmit"
+    "test": "node --experimental-strip-types --test tests/experience.test.ts tests/studies.test.ts",
+    "typecheck": "tsc --noEmit",
+    "test:studies": "node scripts/test-study-ui.mjs",
+    "test:fleet-layout": "node scripts/test-fleet-layout.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",
@@ -39,12 +41,14 @@
     "@cloudflare/vite-plugin": "1.54.4",
     "@cloudflare/workers-types": "5.20260906.1",
     "@openai/sites-vite-plugin": "0.2.0",
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.2",
     "@vitejs/plugin-rsc": "0.5.34",
+    "happy-dom": "^20.14.0",
     "oxfmt": "0.61.0",
     "oxlint": "1.76.0",
     "oxlint-tsgolint": "7.0.2001",

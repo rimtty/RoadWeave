@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import {
   useEffect,
   useReducer,
@@ -567,6 +568,7 @@ export default function Home() {
           RoadWeave<span>Design lab</span>
         </a>
         <div className="header-actions">
+          <Link href="/explore" className="collection-link">60のデザインを見る</Link>
           <span className="lab-tag">THREE WAYS TO RIDE</span>
           <button
             className="icon-button"

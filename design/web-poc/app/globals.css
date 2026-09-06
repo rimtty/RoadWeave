@@ -2282,3 +2282,17 @@ a:focus-visible {
 .join-status {
   display: block;
 }
+
+.collection-link {
+  font-size: 13px;
+  color: inherit;
+  text-decoration: none;
+  border: 1px solid #8390a344;
+  border-radius: 20px;
+  padding: 7px 12px;
+  white-space: nowrap;
+}
+.collection-link:hover { background: #8390a315; }
+@media (max-width: 650px) {
+  .collection-link { font-size: 11px; padding: 6px 8px; }
+}
