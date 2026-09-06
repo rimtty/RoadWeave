@@ -107,6 +107,18 @@
     monospace;
   color: var(--fleet-muted);
 }
+.fleet-list > li[data-speaking='true'] .fleet-rank {
+  color: var(--fleet-member);
+  text-decoration: underline;
+  text-decoration-thickness: 0.8cqw;
+  text-underline-offset: 1cqw;
+}
+.fleet-location-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2cqw;
+}
 .fleet-person {
   display: flex;
   flex-direction: column;

@@ -2292,7 +2292,99 @@ a:focus-visible {
   padding: 7px 12px;
   white-space: nowrap;
 }
-.collection-link:hover { background: #8390a315; }
+.collection-link:hover {
+  background: #8390a315;
+}
+.voice-mix-strip {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.voice-mix-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.voice-mix-heading > b {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+.live-speaker-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.live-speaker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  border: 1px solid var(--d-line, #8390a344);
+  border-radius: 14px;
+  background: var(--d-surface);
+  padding: 5px 8px;
+  color: var(--d-fg);
+  min-width: 0;
+  flex: 1;
+}
+.live-speaker strong {
+  font-size: 13px;
+}
+.live-speaker .wave {
+  width: 18px;
+  gap: 1px;
+  flex-shrink: 0;
+}
+.live-speaker.self {
+  border-color: #ff6b00;
+}
+.hero-mix {
+  text-align: center;
+  margin: 22px 0;
+}
+.hero-mix-people {
+  display: flex;
+  justify-content: center;
+  gap: 22px;
+}
+.hero-mix-people > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+}
+.hero-mix-people .avatar {
+  width: 54px;
+  height: 54px;
+  font-size: 22px;
+}
+.hero-mix h3 {
+  font-size: 20px;
+  margin: 15px 0 4px;
+  color: var(--d-fg);
+}
+.hero-mix p {
+  font-size: 12px;
+  color: var(--d-muted);
+}
+.people-circle .hero-person {
+  margin: 9px auto;
+}
+.people-circle .avatar.hero {
+  width: 84px;
+  height: 84px;
+  font-size: 36px;
+}
+.people-circle .hero-person h3 {
+  margin-top: 8px;
+}
+.speaker-picker button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
 @media (max-width: 650px) {
-  .collection-link { font-size: 11px; padding: 6px 8px; }
+  .collection-link {
+    font-size: 11px;
+    padding: 6px 8px;
+  }
 }

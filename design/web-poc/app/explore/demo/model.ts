@@ -1,3 +1,4 @@
+import { MAX_SPEAKERS, toggleSpeaker } from '../../../lib/voice-session.ts';
 export type MemberId = 'aki' | 'ren' | 'mei';
 export type DemoMode =
   | 'idle'
@@ -7,7 +8,7 @@ export type DemoMode =
   | 'busy';
 export type DemoState = {
   selected: MemberId;
-  remote: MemberId | null;
+  remotes: MemberId[];
   mode: DemoMode;
   held: boolean;
   connected: boolean;
@@ -47,7 +48,7 @@ export function initialDemo(id: number, preview = false): DemoState {
   const quiet = id === 25 || id === 26 || id === 27;
   return {
     selected,
-    remote: quiet ? null : selected,
+    remotes: quiet ? [] : [selected],
     mode: id === 26 && preview ? 'transmitting' : quiet ? 'idle' : 'receiving',
     held: false,
     connected: id !== 27,
@@ -61,7 +62,9 @@ export function initialDemo(id: number, preview = false): DemoState {
   };
 }
 export type DemoAction =
+  | { type: 'preset'; count: 1 | 2 | 3 }
   | { type: 'speaker'; id: MemberId }
+  | { type: 'toggle-speaker' | 'select'; id: MemberId }
   | {
       type:
         | 'quiet'
@@ -81,18 +84,68 @@ export type DemoAction =
 const stopped = { held: false, mode: 'idle' as const, elapsed: 0 };
 export function demoReducer(s: DemoState, a: DemoAction): DemoState {
   switch (a.type) {
+    case 'preset':
+      return {
+        ...s,
+        ...stopped,
+        connected: true,
+        joined: true,
+        selected: 'aki',
+        remotes: demoMembers.slice(0, a.count).map((p) => p.id),
+        mode: 'receiving',
+      };
     case 'speaker':
       return s.connected && s.joined
-        ? { ...s, ...stopped, selected: a.id, remote: a.id, mode: 'receiving' }
+        ? {
+            ...s,
+            selected: a.id,
+            remotes: [a.id],
+            mode:
+              s.mode === 'transmitting'
+                ? 'transmitting'
+                : s.held
+                  ? 'requesting'
+                  : 'receiving',
+          }
         : s;
+    case 'select':
+      return { ...s, selected: a.id };
+    case 'toggle-speaker': {
+      if (!s.connected || !s.joined) return s;
+      const remotes = toggleSpeaker(s.remotes, a.id, s.mode === 'transmitting');
+      return {
+        ...s,
+        remotes,
+        selected: remotes.includes(a.id) ? a.id : remotes[0] ?? s.selected,
+        mode:
+          s.mode === 'transmitting'
+            ? 'transmitting'
+            : s.held
+              ? remotes.length >= MAX_SPEAKERS
+                ? 'busy'
+                : 'requesting'
+              : remotes.length
+                ? 'receiving'
+                : 'idle',
+      };
+    }
     case 'quiet':
-      return { ...s, ...stopped, remote: null };
+      return {
+        ...s,
+        remotes: [],
+        mode:
+          s.mode === 'transmitting'
+            ? 'transmitting'
+            : s.held
+              ? 'requesting'
+              : 'idle',
+      };
     case 'down':
       if (s.held || !s.connected || !s.joined) return s;
       return {
         ...s,
         held: true,
-        mode: s.remote ? 'busy' : 'requesting',
+        mode: s.remotes.length >= MAX_SPEAKERS ? 'busy' : 'requesting',
         elapsed: 0,
       };
     case 'grant':
@@ -100,17 +153,18 @@ export function demoReducer(s: DemoState, a: DemoAction): DemoState {
         s.mode === 'requesting' &&
         s.connected &&
         s.joined &&
-        !s.remote
+        s.remotes.length < MAX_SPEAKERS
         ? { ...s, mode: 'transmitting' }
         : s;
     case 'up':
       return {
         ...s,
         ...stopped,
-        mode: s.remote && s.connected && s.joined ? 'receiving' : 'idle',
+        mode:
+          s.remotes.length && s.connected && s.joined ? 'receiving' : 'idle',
       };
     case 'connect':
-      return { ...s, ...stopped, connected: a.value, remote: null };
+      return { ...s, ...stopped, connected: a.value, remotes: [] };
     case 'stale':
       return { ...s, stale: a.value };
     case 'position':
@@ -130,11 +184,16 @@ export function demoReducer(s: DemoState, a: DemoAction): DemoState {
     case 'mute':
       return { ...s, muted: !s.muted };
     case 'target':
-      return { ...s, ...stopped, remote: null, target: a.value };
+      return {
+        ...s,
+        ...stopped,
+        mode: s.remotes.length ? 'receiving' : 'idle',
+        target: a.value,
+      };
     case 'leave':
-      return { ...s, ...stopped, joined: false, remote: null };
+      return { ...s, ...stopped, joined: false, remotes: [] };
     case 'join':
-      return { ...s, ...stopped, joined: true, connected: true, remote: null };
+      return { ...s, ...stopped, joined: true, connected: true, remotes: [] };
     case 'reset':
       return initialDemo(a.id);
     case 'tick':
@@ -151,15 +210,18 @@ export function demoView(s: DemoState, colorOnly = false) {
   )!;
   const offline = !s.connected || !s.joined;
   const transmitting = s.mode === 'transmitting';
+  const activeCount = offline ? 0 : s.remotes.length + Number(transmitting);
   const voice = offline
     ? '未接続'
     : s.mode === 'busy'
-      ? '使用中'
+      ? '空き待ち'
       : s.mode === 'requesting'
         ? '接続待ち'
         : transmitting
-          ? '送信中'
-          : s.remote
+          ? s.remotes.length
+            ? '送受信中'
+            : '送信中'
+          : s.remotes.length
             ? '受信中'
             : '待受';
   const idLabel = (id: MemberId) => {
@@ -183,8 +245,8 @@ export function demoView(s: DemoState, colorOnly = false) {
     speaker: offline ? '—' : transmitting ? '自分' : idLabel(s.selected),
     stateFocus: offline
       ? '未接続'
-      : s.remote
-        ? idLabel(s.remote)
+      : s.remotes.length
+        ? idLabel(s.remotes[0])
         : `${target}へ`,
     range: Math.max(
       250,
@@ -205,18 +267,24 @@ export function demoView(s: DemoState, colorOnly = false) {
     thirdDistance: distance(third.id),
     thirdDirection: direction(third.id),
     voice,
+    activeCount,
+    speakers: offline
+      ? []
+      : [...s.remotes.map(idLabel), ...(transmitting ? ['自分'] : [])],
     voiceSentence: offline
       ? '再接続してください'
       : transmitting
-        ? `${target}へ送信中`
+        ? `${target}へ送信中${s.remotes.length ? ` · ${s.remotes.map(idLabel).join('・')}を受信` : ''}`
         : s.mode === 'requesting'
           ? '送信を準備中'
           : s.mode === 'busy'
-            ? '仲間の発話を待機'
-            : s.remote
-              ? `${idLabel(s.remote)}から受信中`
+            ? '3/3人が発話中 · 押したままで空き待ち'
+            : s.remotes.length
+              ? `${s.remotes.map(idLabel).join('・')}から受信中`
               : 'PTTで話せます',
-    speakerLabel: s.remote ? '話している人' : '選択中の仲間',
+    speakerLabel: s.remotes.includes(s.selected)
+      ? '話している人'
+      : '選択中の仲間',
     connection: offline
       ? '未接続'
       : s.muted || s.volume === 0
@@ -224,15 +292,23 @@ export function demoView(s: DemoState, colorOnly = false) {
         : '音声接続中',
     count: offline ? '0' : '4',
     target: `${target}へ`,
-    rx: offline ? 'OFF' : transmitting ? 'TX' : s.remote ? 'RX' : 'IDLE',
+    rx: offline
+      ? 'OFF'
+      : transmitting
+        ? 'TX'
+        : s.remotes.length
+          ? 'RX'
+          : 'IDLE',
     hint: offline
       ? '再接続してください'
       : s.mode === 'busy'
-        ? '離して再度押してください'
+        ? '押したままで空きを待てます'
         : transmitting
           ? 'PTTを離すと終了'
-          : s.remote
-            ? '仲間の声が届いています'
+          : s.remotes.length
+            ? s.remotes.length >= MAX_SPEAKERS
+              ? '押したままで空きを待てます'
+              : '受信しながら話せます'
             : '物理PTTで話す',
     positionHint:
       offline || s.stale ? '距離は確認できません' : '相対距離を表示中',
@@ -242,7 +318,7 @@ export function demoView(s: DemoState, colorOnly = false) {
     elapsed: `${Math.floor(s.elapsed / 60)
       .toString()
       .padStart(2, '0')}:${(s.elapsed % 60).toString().padStart(2, '0')}`,
-    audible: !offline && !!s.remote && !s.muted && s.volume > 0,
+    audible: !offline && s.remotes.length > 0 && !s.muted && s.volume > 0,
     offline,
   };
 }

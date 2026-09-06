@@ -73,16 +73,72 @@ test('PTT grant is conditional; short press, disconnect, leave, target change an
   }
   assert.equal(demoReducer(pending, { type: 'grant' }).mode, 'transmitting');
 });
-test('Remote speech owns the channel and is not interrupted by PTT', () => {
+test('PTT mixes with remote speech and release stops only the local stream', () => {
   let s = run(
     { type: 'speaker', id: 'ren' },
     { type: 'down' },
     { type: 'grant' },
   );
-  assert.equal(s.mode, 'busy');
-  assert.equal(s.remote, 'ren');
+  assert.equal(s.mode, 'transmitting');
+  assert.deepEqual(s.remotes, ['ren']);
   s = demoReducer(s, { type: 'up' });
   assert.equal(s.mode, 'receiving');
+});
+test('Three speakers include self; held requests resume when a remote stream ends', () => {
+  let s = run(
+    { type: 'toggle-speaker', id: 'ren' },
+    { type: 'down' },
+    { type: 'grant' },
+  );
+  assert.equal(demoView(s).activeCount, 3);
+  assert.equal(s.mode, 'transmitting');
+  s = demoReducer(s, { type: 'toggle-speaker', id: 'mei' });
+  assert.deepEqual(
+    s.remotes,
+    ['aki', 'ren'],
+    'A fourth stream cannot displace active speakers',
+  );
+  s = demoReducer(s, { type: 'up' });
+  s = demoReducer(s, { type: 'toggle-speaker', id: 'mei' });
+  s = demoReducer(s, { type: 'down' });
+  assert.equal(s.mode, 'busy');
+  const released = demoReducer(s, { type: 'up' });
+  const removed = demoReducer(released, { type: 'toggle-speaker', id: 'mei' });
+  assert.notEqual(demoReducer(removed, { type: 'grant' }).mode, 'transmitting');
+  s = demoReducer(s, { type: 'toggle-speaker', id: 'mei' });
+  assert.equal(s.mode, 'requesting');
+  assert.equal(s.held, true);
+  assert.equal(demoReducer(s, { type: 'grant' }).mode, 'transmitting');
+});
+test('Incoming speech can fill a pending slot; mute and stale GPS do not free voice slots', () => {
+  let s = run(
+    { type: 'toggle-speaker', id: 'ren' },
+    { type: 'down' },
+    { type: 'toggle-speaker', id: 'mei' },
+  );
+  assert.equal(s.mode, 'busy');
+  s = demoReducer(s, { type: 'grant' });
+  assert.equal(s.mode, 'busy');
+  s = demoReducer(s, { type: 'mute' });
+  s = demoReducer(s, { type: 'stale', value: true });
+  assert.equal(demoView(s).activeCount, 3);
+  assert.equal(demoView(s).audible, false);
+  assert.equal(
+    demoReducer(s, { type: 'target', value: 'ren' }).remotes.length,
+    3,
+  );
+  assert.equal(
+    demoReducer(s, { type: 'connect', value: false }).remotes.length,
+    0,
+  );
+});
+test('Ending overlapping speech returns the single-speaker screen to the remaining speaker', () => {
+  let s = run({ type: 'preset', count: 3 });
+  s = demoReducer(s, { type: 'toggle-speaker', id: 'mei' });
+  s = demoReducer(s, { type: 'toggle-speaker', id: 'ren' });
+  assert.deepEqual(s.remotes, ['aki']);
+  assert.equal(demoView(s).name, 'AKI');
+  assert.equal(demoView(s).distance, '120');
 });
 test('All members and distances update text and direction; stale never exposes old coordinates', () => {
   for (const peer of demoMembers) {

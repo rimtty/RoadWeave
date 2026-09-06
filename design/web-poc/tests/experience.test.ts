@@ -9,6 +9,34 @@ import {
 } from '../lib/experience.ts';
 const run = (...actions: Action[]) =>
   actions.reduce(reducer, structuredClone(initialState));
+test('Original designs allow three streams and held PTT resumes without a second press', () => {
+  let s = run(
+    { type: 'scenario', scenario: 'mixing' },
+    { type: 'ptt-down' },
+    { type: 'ptt-granted' },
+  );
+  assert.equal(s.voice, 'talking');
+  assert.equal(s.remotes.length, 2);
+  assert.match(voiceLabel(s), /自分・AKI・REN/);
+  s = reducer(s, { type: 'toggle-speaker', id: 'yui' });
+  assert.equal(s.remotes.length, 2);
+  s = reducer(s, { type: 'ptt-up' });
+  assert.equal(s.remotes.length, 2);
+  s = reducer(s, { type: 'toggle-speaker', id: 'yui' });
+  s = reducer(s, { type: 'ptt-down' });
+  assert.equal(s.voice, 'busy');
+  const released = reducer(s, { type: 'ptt-up' });
+  assert.equal(
+    reducer(reducer(released, { type: 'toggle-speaker', id: 'yui' }), {
+      type: 'ptt-granted',
+    }).voice,
+    'idle',
+  );
+  s = reducer(s, { type: 'toggle-speaker', id: 'yui' });
+  assert.equal(s.voice, 'requesting');
+  assert.equal(reducer(s, { type: 'ptt-granted' }).voice, 'talking');
+  assert.equal(reducer(s, { type: 'toggle-speaker', id: 'yui' }).voice, 'busy');
+});
 test('PTT requires a grant, and release before grant cannot start transmission', () => {
   let s = run({ type: 'scenario', scenario: 'quiet' }, { type: 'ptt-down' });
   assert.equal(s.voice, 'requesting');
@@ -35,9 +63,9 @@ test('granted PTT stops on release and disconnection', () => {
     assert.equal(next.held, false);
   }
 });
-test('receive, disconnected, unjoined and empty groups never transmit', () => {
+test('three occupied slots, disconnected, unjoined and empty groups never transmit', () => {
   const cases = [
-    run(),
+    run({ type: 'scenario', scenario: 'busy' }),
     run({ type: 'scenario', scenario: 'lost' }),
     run({ type: 'leave' }),
     run({ type: 'create', group: '朝のライド' }),
@@ -48,7 +76,7 @@ test('receive, disconnected, unjoined and empty groups never transmit', () => {
     });
     assert.notEqual(s.voice, 'talking');
   }
-  assert.equal(run({ type: 'ptt-down' }).voice, 'busy');
+  assert.equal(run({ type: 'ptt-down' }).voice, 'requesting');
 });
 test('canceled or superseded group joins cannot complete late', () => {
   let s = run(
@@ -74,7 +102,7 @@ test('selected PTT target and membership are cleared when leaving', () => {
 test('stale positions are separate from the voice connection', () => {
   const s = run({ type: 'stale', value: true });
   assert.equal(s.connected, true);
-  assert.equal(s.remote, 'aki');
+  assert.deepEqual(s.remotes, ['aki']);
   assert.equal(s.stale, true);
 });
 test('volume is clamped and mute is reflected in the voice label', () => {

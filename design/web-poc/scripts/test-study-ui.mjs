@@ -132,6 +132,7 @@ try {
     assert.equal(Number(screen().dataset.demoScreen), id);
     await setSwitch('通信接続', true);
     await setSwitch('位置未更新', false);
+    await click(button('仲間の発話をすべて終了'));
     await click(button(id >= 55 ? 'ピンク' : 'REN'));
     assert.equal(screen().dataset.voice, 'RX', `#${id} receives`);
     const meterSelector = {
@@ -282,10 +283,10 @@ try {
     assert.equal(dialog().querySelector('.study-ptt').dataset.held, 'true');
     assert.match(
       dialog().querySelector('.study-device-status').textContent,
-      /待機/,
+      /準備/,
     );
     await key('keyup');
-    await click(button('受信を終えて待受にする'));
+    await click(button('仲間の発話をすべて終了'));
     assert.equal(screen().dataset.audioActive, 'false');
     if (meterSelector)
       assert.doesNotMatch(
@@ -310,6 +311,36 @@ try {
     if (distanceIds.has(id))
       assert.match(screenText(), /—/, `#${id} disconnected position is hidden`);
     await setSwitch('通信接続', true);
+    // Concurrent audio occupies three slots including local transmission.
+    await click(button('仲間の発話をすべて終了'));
+    await click(button(id >= 55 ? 'ライム' : 'AKI'));
+    await click(button(id >= 55 ? 'ピンク' : 'REN'));
+    assert.equal(screen().querySelectorAll('[data-mix-peer]').length, 2);
+    await key('keydown');
+    await act(async () => {
+      await delay(280);
+    });
+    assert.equal(screen().querySelectorAll('[data-mix-peer]').length, 3);
+    assert.ok(screen().querySelector('[data-mix-peer="self"]'));
+    assert.equal(button(id >= 55 ? 'ブルー' : 'MEI').disabled, true);
+    await key('keyup');
+    assert.equal(screen().querySelectorAll('[data-mix-peer]').length, 2);
+    await click(button(id >= 55 ? 'ブルー' : 'MEI'));
+    await key('keydown');
+    assert.match(
+      dialog().querySelector('.study-device-status').textContent,
+      /空き待ち/,
+    );
+    await click(button(id >= 55 ? 'ブルー' : 'MEI'));
+    await act(async () => {
+      await delay(280);
+    });
+    assert.equal(
+      screen().dataset.voice,
+      'TX',
+      'Held PTT resumes without another press',
+    );
+    await key('keyup');
     await click(button('この案の初期状態に戻す'));
     await click(dialog().querySelector('[data-slot="dialog-close"]'));
     assert.equal(dialog(), null, `#${id} closes`);
@@ -336,7 +367,7 @@ try {
     screen().querySelector('svg[aria-label="509"]'),
     'Slider updates dot numeral geometry to 509',
   );
-  await click(button('受信を終えて待受にする'));
+  await click(button('仲間の発話をすべて終了'));
   await key('keydown');
   await key('keyup');
   await act(async () => {

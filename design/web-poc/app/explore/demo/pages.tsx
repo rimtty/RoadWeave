@@ -3,16 +3,23 @@ import { createContext, useContext, type ReactNode } from 'react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 export type StudyPage = 'voice' | 'fleet';
 export const StudyPageContext = createContext<StudyPage>('voice');
+export type SpeakerPreset = 1 | 2 | 3 | null;
+const SpeakerPresetContext = createContext<SpeakerPreset>(null);
+export const useSpeakerPreset = () => useContext(SpeakerPresetContext);
 export function StudyPageProvider({
   page,
+  speakers = null,
   children,
 }: {
   page: StudyPage;
+  speakers?: SpeakerPreset;
   children: ReactNode;
 }) {
   return (
     <StudyPageContext.Provider value={page}>
-      {children}
+      <SpeakerPresetContext.Provider value={speakers}>
+        {children}
+      </SpeakerPresetContext.Provider>
     </StudyPageContext.Provider>
   );
 }

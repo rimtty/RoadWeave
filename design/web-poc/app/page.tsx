@@ -64,7 +64,8 @@ const pageIcons = { people: Users, ride: Navigation, radar: Compass };
 const scenarioOptions: [Scenario, string, string][] = [
   ['quiet', '待受', 'PTTで話せる状態'],
   ['receiving', '受信', 'AKIからの声が届く'],
-  ['busy', '発話が重なる', '仲間の発話後に押し直す'],
+  ['mixing', '2人で同時発話', '受信しながら自分も参加できる'],
+  ['busy', '3人で同時発話', '押したままで送信枠の空きを待つ'],
   ['lost', '接続が切れる', '再接続まで送信しない'],
 ];
 function Avatar({
@@ -113,9 +114,13 @@ export default function Home() {
   }, [s]);
   const startSwipe = useRef<{ x: number; y: number } | null>(null);
   const concept = concepts.find((c) => c.id === s.design)!;
-  const remote = s.members.find((p) => p.id === s.remote);
+  const remotePeers = s.members.filter(
+    (p) => s.connected && s.joined && s.remotes.includes(p.id),
+  );
+  const remote = remotePeers[0];
   const selected = s.members.find((p) => p.id === s.selected);
   const talking = s.voice === 'talking';
+  const activeCount = remotePeers.length + Number(talking);
   const txTarget = s.target
     ? s.members.find((p) => p.id === s.target)?.name
     : '全員';
@@ -255,7 +260,7 @@ export default function Home() {
         properties: {
           scenario: {
             type: 'string',
-            enum: ['quiet', 'receiving', 'busy', 'lost'],
+            enum: ['quiet', 'receiving', 'mixing', 'busy', 'lost'],
           },
         },
         required: ['scenario'],
@@ -296,23 +301,77 @@ export default function Home() {
       key={p.id}
       peer={p}
       large={large}
-      active={s.connected && p.id === s.remote}
+      active={s.connected && s.remotes.includes(p.id)}
       onClick={() => dispatch({ type: 'select', id: p.id })}
     />
   );
   const voiceStrip = (
     <div
-      className={`voice-strip ${talking ? 'transmitting' : ''} ${!s.connected ? 'unavailable' : ''}`}
+      className={`voice-strip voice-mix-strip ${talking ? 'transmitting' : ''} ${!s.connected ? 'unavailable' : ''}`}
       aria-live="polite"
+      aria-label={voiceLabel(s)}
     >
-      <span className="voice-symbol">
-        {!s.connected ? (
-          <WifiOff size={16} />
-        ) : (
-          <Wave active={!!remote || talking} />
-        )}
-      </span>
-      <span>{voiceLabel(s)}</span>
+      <div className="voice-mix-heading">
+        <span className="voice-symbol">
+          {!s.connected ? (
+            <WifiOff size={16} />
+          ) : (
+            <Wave
+              active={
+                talking ||
+                remotePeers.some(
+                  (p) =>
+                    !s.masterMuted &&
+                    s.masterVolume > 0 &&
+                    !p.muted &&
+                    p.volume > 0,
+                )
+              }
+            />
+          )}
+        </span>
+        <span>
+          {!s.connected
+            ? '再接続しています'
+            : s.voice === 'busy'
+              ? '送信の空き待ち'
+              : s.voice === 'requesting'
+                ? '送信を準備中'
+                : talking
+                  ? '送信中'
+                  : activeCount
+                    ? '音声を受信中'
+                    : 'PTTで話せます'}
+        </span>
+        <b>{activeCount}/3</b>
+      </div>
+      {!!activeCount && (
+        <div className="live-speaker-chips" aria-label="現在の話者">
+          {remotePeers.map((p) => (
+            <span
+              className={`live-speaker ${p.tone}`}
+              data-live-peer={p.id}
+              key={p.id}
+            >
+              <strong>{p.name}</strong>
+              <Wave
+                active={
+                  !s.masterMuted &&
+                  s.masterVolume > 0 &&
+                  !p.muted &&
+                  p.volume > 0
+                }
+              />
+            </span>
+          ))}
+          {talking && (
+            <span className="live-speaker self" data-live-peer="self">
+              <strong>自分</strong>
+              <Wave active />
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
   function peopleView() {
@@ -322,45 +381,70 @@ export default function Home() {
           className={`people-circle ${remote || talking ? 'has-voice' : 'quiet'}`}
         >
           {voiceStrip}
-          <div
-            className="hero-person"
-            key={talking ? 'you' : (remote?.id ?? 'group')}
-          >
-            {talking ? (
-              <div className="avatar hero self is-speaking">
-                <Mic size={42} />
+          {activeCount > 1 ? (
+            <div className="hero-mix">
+              <div className="hero-mix-people">
+                {remotePeers.map((p) => (
+                  <div key={p.id}>
+                    {peerButton(p)}
+                    <strong>{p.name}</strong>
+                  </div>
+                ))}
+                {talking && (
+                  <div>
+                    <div className="avatar mini self is-speaking">
+                      <Mic size={22} />
+                    </div>
+                    <strong>自分</strong>
+                  </div>
+                )}
               </div>
-            ) : remote ? (
-              peerButton(remote, true)
-            ) : (
-              <button
-                className="group-orb"
-                onClick={() => dispatch({ type: 'sheet', sheet: 'members' })}
-                aria-label="メンバー一覧"
-              >
-                <Users size={38} />
-                <span>{s.members.length + 1}人</span>
-              </button>
-            )}
-            <h3>{talking ? 'あなた' : (remote?.name ?? 'みんな、ここに。')}</h3>
-            <span>
-              {talking
-                ? `${txTarget}に声を届けています`
-                : remote
-                  ? 'グループ全員への音声'
-                  : 'ボタンひとつで、声が届く。'}
-            </span>
-          </div>
+              <h3>{activeCount}人で、話しています</h3>
+              <p>声を重ねて、そのまま会話。</p>
+            </div>
+          ) : (
+            <div
+              className="hero-person"
+              key={talking ? 'you' : (remote?.id ?? 'group')}
+            >
+              {talking ? (
+                <div className="avatar hero self is-speaking">
+                  <Mic size={42} />
+                </div>
+              ) : remote ? (
+                peerButton(remote, true)
+              ) : (
+                <button
+                  className="group-orb"
+                  onClick={() => dispatch({ type: 'sheet', sheet: 'members' })}
+                  aria-label="メンバー一覧"
+                >
+                  <Users size={38} />
+                  <span>{s.members.length + 1}人</span>
+                </button>
+              )}
+              <h3>
+                {talking ? 'あなた' : (remote?.name ?? 'みんな、ここに。')}
+              </h3>
+              <span>
+                {talking
+                  ? `${txTarget}に声を届けています`
+                  : remote
+                    ? 'グループ全員への音声'
+                    : 'ボタンひとつで、声が届く。'}
+              </span>
+            </div>
+          )}
           <div className="friends">
             {s.members
-              .filter((p) => p.id !== remote?.id)
+              .filter((p) => !s.remotes.includes(p.id))
               .map((p) => (
                 <div className="friend" key={p.id}>
                   {peerButton(p)}
                   <span>{p.name}</span>
                 </div>
               ))}
-            {remote && (
+            {remote && !talking && (
               <div className="friend">
                 <div className="avatar mini self">自</div>
                 <span>あなた</span>
@@ -375,7 +459,7 @@ export default function Home() {
         <div className="member-list">
           {s.members.map((p) => (
             <button
-              className={`member-row ${p.id === s.remote ? 'speaking' : ''}`}
+              className={`member-row ${s.remotes.includes(p.id) ? 'speaking' : ''}`}
               key={p.id}
               onClick={() => dispatch({ type: 'select', id: p.id })}
             >
@@ -383,7 +467,7 @@ export default function Home() {
               <span>
                 <strong>{p.name}</strong>
                 <small>
-                  {p.id === s.remote
+                  {s.remotes.includes(p.id)
                     ? '話しています'
                     : s.stale && p.id === 'mei'
                       ? '位置が未更新'
@@ -393,8 +477,12 @@ export default function Home() {
               <span className="row-trailing">
                 {p.muted ? (
                   <VolumeX size={18} />
-                ) : p.id === s.remote ? (
-                  <Wave active />
+                ) : s.remotes.includes(p.id) ? (
+                  <Wave
+                    active={
+                      !s.masterMuted && s.masterVolume > 0 && p.volume > 0
+                    }
+                  />
                 ) : (
                   <ChevronRight size={16} />
                 )}
@@ -408,6 +496,7 @@ export default function Home() {
   function rideView() {
     return (
       <div className="ride-view">
+        {voiceStrip}
         {s.design === 'pulse' ? (
           <>
             <div className="ride-leading">
@@ -445,7 +534,7 @@ export default function Home() {
                 </strong>
               </div>
             </div>
-            {voiceStrip}
+
             <div className="position-age">
               {s.stale ? 'MEIの位置は12秒前' : '位置情報 · 1秒前'}
             </div>
@@ -483,7 +572,7 @@ export default function Home() {
               </span>
               <ChevronRight size={18} />
             </button>
-            {voiceStrip}
+
             <button
               className="text-action"
               onClick={() => dispatch({ type: 'sheet', sheet: 'members' })}
@@ -498,6 +587,7 @@ export default function Home() {
   function radarView() {
     return (
       <div className="radar-view">
+        {voiceStrip}
         <div className="radar-heading">
           <span>
             <Navigation size={12} /> 進行方向が上
@@ -529,7 +619,7 @@ export default function Home() {
               return (
                 <button
                   key={p.id}
-                  className={`radar-peer ${p.id === s.remote && s.connected ? 'active' : ''}`}
+                  className={`radar-peer ${s.remotes.includes(p.id) && s.connected ? 'active' : ''}`}
                   style={{
                     left: `${50 + ((Math.sin(rad) * p.distance) / 500) * 38.46}%`,
                     top: `${50 - ((Math.cos(rad) * p.distance) / 500) * 45.45}%`,
@@ -543,7 +633,6 @@ export default function Home() {
               );
             })}
         </div>
-        {voiceStrip}
         <div className="radar-footer">
           <span>{s.stale ? 'MEI · 位置未更新' : '5人の位置を表示'}</span>
           <button onClick={() => dispatch({ type: 'sheet', sheet: 'members' })}>
@@ -568,7 +657,9 @@ export default function Home() {
           RoadWeave<span>Design lab</span>
         </a>
         <div className="header-actions">
-          <Link href="/explore" className="collection-link">60のデザインを見る</Link>
+          <Link href="/explore" className="collection-link">
+            60のデザインを見る
+          </Link>
           <span className="lab-tag">THREE WAYS TO RIDE</span>
           <button
             className="icon-button"
@@ -590,7 +681,7 @@ export default function Home() {
       {guide && (
         <div className="guide">
           <p>
-            3つのデザインで同じ操作を試せます。PTTは押している間だけ送信。受信中は送信できません。「待受」に切り替えると話せます。画面は左右スワイプにも対応しています。
+            3つのデザインで同じ操作を試せます。自分を含めて最大3人が同時に発話。仲間の声を聞きながら、PTTを押している間だけ送信できます。3人が発話中なら、押したままで空きを待てます。
           </p>
           <button
             className="icon-button"
@@ -831,6 +922,9 @@ export default function Home() {
               aria-label="PTT 押している間だけ話す"
               aria-pressed={s.held}
               onPointerDown={(e) => {
+                if (e.button !== 0) return;
+                e.preventDefault();
+                e.currentTarget.focus();
                 e.currentTarget.setPointerCapture(e.pointerId);
                 pttDown();
               }}
@@ -859,7 +953,7 @@ export default function Home() {
                   : s.voice === 'requesting'
                     ? '準備中…'
                     : s.voice === 'busy'
-                      ? '仲間の発話中'
+                      ? '3人発話中 · 空き待ち'
                       : s.target
                         ? `${txTarget}に話す`
                         : '押して話す'}
@@ -910,18 +1004,19 @@ export default function Home() {
               </button>
             ))}
           </fieldset>
-          {s.remote && (
+          {s.joined && s.connected && (
             <div className="speaker-picker">
-              <span>話している人</span>
+              <span>仲間の声（複数選択・最大3人）</span>
               <div>
                 {s.members.map((p) => (
                   <button
                     key={p.id}
                     aria-label={`${p.name}が話す`}
-                    aria-pressed={s.remote === p.id}
+                    aria-pressed={s.remotes.includes(p.id)}
+                    disabled={!s.remotes.includes(p.id) && activeCount >= 3}
                     onClick={() => {
                       setTour(false);
-                      dispatch({ type: 'speaker', id: p.id });
+                      dispatch({ type: 'toggle-speaker', id: p.id });
                     }}
                   >
                     {p.initial}

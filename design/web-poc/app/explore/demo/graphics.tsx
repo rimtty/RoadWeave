@@ -134,7 +134,7 @@ export function DemoVoiceIcon(props: LucideProps) {
       ? Mic
       : state.muted || state.volume === 0
         ? VolumeX
-        : state.remote
+        : state.remotes.length
           ? AudioLines
           : Radio;
   return <Icon {...props} />;

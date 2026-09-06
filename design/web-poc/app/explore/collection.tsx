@@ -12,7 +12,12 @@ import { DemoText, useView, useStudy } from './demo/bindings';
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { StudyPageProvider, StudyPageTabs, type StudyPage } from './demo/pages';
+import {
+  StudyPageProvider,
+  StudyPageTabs,
+  type StudyPage,
+  type SpeakerPreset,
+} from './demo/pages';
 import type { CSSProperties, ReactNode } from 'react';
 import {
   ArrowDown,
@@ -91,13 +96,13 @@ function VoiceConvoy() {
       {fleet.peers.map((peer) => (
         <div
           key={peer.id}
-          className={`rw-convoy-peer ${peer.id === 'self' ? 'rw-self' : state.remote === peer.id ? 'rw-active' : ''}`}
+          className={`rw-convoy-peer ${peer.id === 'self' ? 'rw-self' : state.remotes.some((id) => id === peer.id) ? 'rw-active' : ''}`}
           data-voice-peer={peer.id}
         >
           <i>{peer.id === 'self' ? <Navigation size={17} /> : peer.name[0]}</i>
           <span>
             <b>{peer.name}</b>
-            {state.remote === peer.id && (
+            {state.remotes.some((id) => id === peer.id) && (
               <small>
                 <DemoVoiceIcon size={14} />
                 <DemoText template="{voice}" />
@@ -375,8 +380,9 @@ function DotRadar() {
 
 export default function Explore() {
   const [boardPage, setBoardPage] = useState<StudyPage>('voice');
+  const [boardSpeakers, setBoardSpeakers] = useState<SpeakerPreset>(null);
   return (
-    <StudyPageProvider page={boardPage}>
+    <StudyPageProvider page={boardPage} speakers={boardSpeakers}>
       <main className="rw-board">
         <header className="rw-topbar">
           <Link href="/" className="rw-wordmark">
@@ -429,6 +435,21 @@ export default function Explore() {
           </div>
         </section>
         <div className="study-board-switch">
+          <div
+            className="study-voice-presets"
+            role="group"
+            aria-label="60案の同時発話人数"
+          >
+            {([null, 1, 2, 3] as const).map((count) => (
+              <button
+                key={count ?? 'default'}
+                aria-pressed={boardSpeakers === count}
+                onClick={() => setBoardSpeakers(count)}
+              >
+                {count === null ? '初期状態' : `${count}人で発話`}
+              </button>
+            ))}
+          </div>
           <StudyPageTabs
             value={boardPage}
             onChange={setBoardPage}

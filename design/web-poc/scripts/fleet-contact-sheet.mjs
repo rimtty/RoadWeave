@@ -1,7 +1,8 @@
 import { chromium } from '@playwright/test';
 import fs from 'node:fs/promises';
 
-const output = 'outputs/fleet-layout';
+const output = process.argv[2] || 'outputs/fleet-layout';
+const caption = process.argv[3] || '車列・GPS';
 const browser = await chromium.launch({
   channel: process.env.BROWSER_CHANNEL || 'chrome',
   headless: true,
@@ -15,7 +16,7 @@ try {
       Array.from({ length: 20 }, async (_, i) => {
         const id = String(start + i).padStart(2, '0');
         const image = await fs.readFile(`${output}/${id}.png`);
-        return `<figure><figcaption>${id} / 車列・GPS</figcaption><img src="data:image/png;base64,${image.toString('base64')}" /></figure>`;
+      return `<figure><figcaption>${id} / ${caption}</figcaption><img src="data:image/png;base64,${image.toString('base64')}" /></figure>`;
       }),
     );
     await page.setContent(

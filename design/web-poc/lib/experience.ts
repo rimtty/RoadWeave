@@ -1,7 +1,8 @@
+import { MAX_SPEAKERS, toggleSpeaker } from './voice-session.ts';
 export type Design = 'circle' | 'pulse' | 'compass';
 export type Page = 'people' | 'ride' | 'radar';
 export type Voice = 'idle' | 'requesting' | 'talking' | 'busy';
-export type Scenario = 'quiet' | 'receiving' | 'busy' | 'lost';
+export type Scenario = 'quiet' | 'receiving' | 'mixing' | 'busy' | 'lost';
 export type Sheet =
   | 'settings'
   | 'volume'
@@ -114,7 +115,7 @@ export type State = {
   group: string;
   members: Peer[];
   connected: boolean;
-  remote: string | null;
+  remotes: string[];
   voice: Voice;
   held: boolean;
   masterVolume: number;
@@ -136,7 +137,7 @@ export const initialState: State = {
   group: '瀬戸内ライド',
   members: peers.map((p) => ({ ...p })),
   connected: true,
-  remote: 'aki',
+  remotes: ['aki'],
   voice: 'idle',
   held: false,
   masterVolume: 60,
@@ -156,6 +157,7 @@ export type Action =
   | { type: 'navigate'; page: Page }
   | { type: 'scenario'; scenario: Scenario }
   | { type: 'speaker'; id: string }
+  | { type: 'toggle-speaker'; id: string }
   | { type: 'ptt-down' }
   | { type: 'ptt-granted' }
   | { type: 'ptt-up' }
@@ -196,21 +198,47 @@ export function reducer(s: State, a: Action): State {
         ...stop,
         scenario: a.scenario,
         connected: a.scenario !== 'lost',
-        remote:
+        remotes:
           s.joined &&
           s.members.length &&
-          (a.scenario === 'receiving' || a.scenario === 'busy')
-            ? s.members[0].id
-            : null,
+          ['receiving', 'mixing', 'busy'].includes(a.scenario)
+            ? s.members
+                .slice(
+                  0,
+                  a.scenario === 'busy' ? 3 : a.scenario === 'mixing' ? 2 : 1,
+                )
+                .map((p) => p.id)
+            : [],
         notice:
           a.scenario === 'lost'
             ? '接続が切れました。再接続を待っています。'
             : '',
       };
     case 'speaker':
-      return s.members.some((p) => p.id === a.id) && s.connected
-        ? { ...s, ...stop, remote: a.id, scenario: 'receiving' }
+      return s.members.some((p) => p.id === a.id) && s.connected && s.joined
+        ? {
+            ...s,
+            remotes: [a.id],
+            scenario: 'receiving',
+            voice: s.held && s.voice !== 'talking' ? 'requesting' : s.voice,
+          }
         : s;
+    case 'toggle-speaker': {
+      if (!s.connected || !s.joined || !s.members.some((p) => p.id === a.id))
+        return s;
+      const remotes = toggleSpeaker(s.remotes, a.id, s.voice === 'talking');
+      return {
+        ...s,
+        remotes,
+        notice: '',
+        voice:
+          s.held && s.voice !== 'talking'
+            ? remotes.length >= MAX_SPEAKERS
+              ? 'busy'
+              : 'requesting'
+            : s.voice,
+      };
+    }
     case 'ptt-down':
       if (s.held) return s;
       if (!s.joined)
@@ -219,20 +247,25 @@ export function reducer(s: State, a: Action): State {
         return { ...s, ...stop, notice: '再接続してから話せます。' };
       if (!s.members.length)
         return { ...s, ...stop, notice: '仲間が参加すると話せます。' };
-      if (s.remote)
+      if (s.remotes.length >= MAX_SPEAKERS)
         return {
           ...s,
           voice: 'busy',
           held: true,
-          notice: `${s.members.find((p) => p.id === s.remote)?.name ?? '仲間'}が話しています。離して、もう一度押してください。`,
+          notice: '3人が発話中です。押したままで空きを待てます。',
         };
       return { ...s, voice: 'requesting', held: true, notice: '' };
     case 'ptt-granted':
-      return s.held && s.voice === 'requesting' && s.connected && !s.remote
+      return s.held &&
+        s.voice === 'requesting' &&
+        s.connected &&
+        s.joined &&
+        s.members.length > 0 &&
+        s.remotes.length < MAX_SPEAKERS
         ? { ...s, voice: 'talking' }
         : s;
     case 'ptt-up':
-      return { ...s, ...stop };
+      return { ...s, ...stop, notice: '' };
     case 'stale':
       return { ...s, stale: a.value };
     case 'sheet':
@@ -293,7 +326,7 @@ export function reducer(s: State, a: Action): State {
             joining: null,
             members: peers.map((p) => ({ ...p })),
             connected: true,
-            remote: null,
+            remotes: [],
             target: null,
             sheet: null,
             stale: false,
@@ -310,7 +343,7 @@ export function reducer(s: State, a: Action): State {
             joined: true,
             group,
             members: [],
-            remote: null,
+            remotes: [],
             target: null,
             connected: true,
             sheet: null,
@@ -328,7 +361,7 @@ export function reducer(s: State, a: Action): State {
         ...stop,
         joined: false,
         members: [],
-        remote: null,
+        remotes: [],
         target: null,
         sheet: null,
         selected: null,
@@ -354,11 +387,18 @@ export function reducer(s: State, a: Action): State {
 export function voiceLabel(s: State): string {
   if (!s.joined) return 'まだ参加していません';
   if (!s.connected) return '再接続しています';
-  if (s.voice === 'talking') return 'あなたが話しています';
+  const names = s.members
+    .filter((p) => s.remotes.includes(p.id))
+    .map(
+      (p) =>
+        `${p.name}${s.masterMuted || s.masterVolume === 0 || p.muted || p.volume === 0 ? '（消音）' : ''}`,
+    );
+  if (s.voice === 'talking')
+    return (
+      ['自分', ...names].join('・') + ` / ${s.remotes.length + 1}/3人が発話中`
+    );
   if (s.voice === 'requesting') return '送信を準備しています';
-  if (s.voice === 'busy') return 'いまは仲間が話しています';
-  const p = s.members.find((p) => p.id === s.remote);
-  if (p)
-    return `${p.name} が話しています${s.masterMuted || p.muted || p.volume === 0 ? ' · 消音' : ''}`;
+  if (s.voice === 'busy') return '3/3人が発話中 · 空き待ち';
+  if (names.length) return `${names.join('・')} / ${names.length}/3人が発話中`;
   return s.members.length ? 'いつでも話せます' : '仲間の参加を待っています';
 }

@@ -100,6 +100,11 @@ export function FleetScreen() {
               data-fleet-peer={peer.id}
               data-selected={peer.id === state.selected}
               data-self={peer.id === 'self'}
+              data-speaking={
+                peer.id === 'self'
+                  ? state.mode === 'transmitting'
+                  : state.remotes.includes(peer.id)
+              }
               style={
                 {
                   '--fleet-member': colorOnly
@@ -238,7 +243,10 @@ export function FleetScreen() {
       </div>
       <footer className="fleet-coordinates">
         <span>
-          {fleet.available ? label(selected) : 'GPS'}{' '}
+          <span className="fleet-location-caption">
+            <span>{fleet.available ? label(selected) : 'GPS'}</span>
+            <span>発話 {view.activeCount}/3</span>
+          </span>
           <b>
             {fleet.available
               ? `${selected.latitude.toFixed(5)}, ${selected.longitude.toFixed(5)}`

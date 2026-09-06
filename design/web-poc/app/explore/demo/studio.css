@@ -202,6 +202,46 @@
   min-height: 43px;
   cursor: pointer;
 }
+.study-distance-members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.study-distance-members button {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #c8cec3;
+  background: #fff;
+  color: #293027;
+  font-size: 12px;
+  cursor: pointer;
+}
+.study-distance-members button[aria-pressed='true'] {
+  background: #e5eecf;
+  border-color: #303f24;
+}
+.study-voice-presets {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.study-voice-presets button {
+  flex: 1;
+  min-width: 85px;
+  padding: 10px 8px;
+  font-size: 13px;
+  border-radius: 9px;
+  border: 1px solid #c8cec3;
+  background: #fff;
+  color: #293027;
+  cursor: pointer;
+}
+.study-voice-presets button[aria-pressed='true'] {
+  color: #fff;
+  background: #293027;
+  border-color: #293027;
+}
 .study-controls [data-slot='slider'] {
   padding: 8px 3px;
 }

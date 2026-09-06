@@ -20,7 +20,13 @@ import { DemoProvider } from './bindings';
 import { demoMembers, demoReducer, demoView, initialDemo } from './model';
 import './studio.css';
 import { FleetScreen } from './fleet';
-import { StudyPageTabs, useStudyPage, type StudyPage } from './pages';
+import { MixScreen } from './mix';
+import {
+  StudyPageTabs,
+  useStudyPage,
+  useSpeakerPreset,
+  type StudyPage,
+} from './pages';
 
 export function StudyDemo({
   id,
@@ -37,13 +43,18 @@ export function StudyDemo({
 }) {
   const [open, setOpen] = useState(false);
   const boardPage = useStudyPage();
+  const speakerPreset = useSpeakerPreset();
   const [page, setPage] = useState<StudyPage>(boardPage);
   const [state, dispatch] = useReducer(demoReducer, id, (n) =>
     initialDemo(n, true),
   );
   const [running, setRunning] = useState(false);
   const controlsId = useId();
-  const view = demoView(state, id >= 55);
+  const displayState =
+    !open && speakerPreset !== null
+      ? demoReducer(state, { type: 'preset', count: speakerPreset })
+      : state;
+  const view = demoView(displayState, id >= 55);
   useEffect(() => {
     const sync = () => {
       const requested = Number(
@@ -120,8 +131,11 @@ export function StudyDemo({
     state.selected,
   ]);
   function changeOpen(value: boolean) {
-    if (value) dispatch({ type: 'reset', id });
-    else dispatch({ type: 'up' });
+    if (value) {
+      dispatch({ type: 'reset', id });
+      if (speakerPreset !== null)
+        dispatch({ type: 'preset', count: speakerPreset });
+    } else dispatch({ type: 'up' });
     setRunning(false);
     setOpen(value);
     if (value) setPage(boardPage);
@@ -143,11 +157,12 @@ export function StudyDemo({
       className={`study-screen ${screenClass}`}
       data-demo-screen={id}
       data-page={open ? page : boardPage}
+      data-mix={view.activeCount > 1 || displayState.mode === 'transmitting'}
       data-voice={view.rx}
       data-stale={state.stale || view.offline}
       data-audible={view.audible}
       data-audio-active={
-        view.audible || (!view.offline && state.mode === 'transmitting')
+        view.audible || (!view.offline && displayState.mode === 'transmitting')
       }
       style={
         {
@@ -159,11 +174,17 @@ export function StudyDemo({
         } as CSSProperties
       }
     >
-      {(open ? page : boardPage) === 'fleet' ? <FleetScreen /> : children}
+      {(open ? page : boardPage) === 'fleet' ? (
+        <FleetScreen />
+      ) : view.activeCount > 1 || displayState.mode === 'transmitting' ? (
+        <MixScreen />
+      ) : (
+        children
+      )}
     </div>
   );
   return (
-    <DemoProvider state={state} id={id}>
+    <DemoProvider state={displayState} id={id}>
       {!open ? (
         screen
       ) : (
@@ -207,6 +228,7 @@ export function StudyDemo({
               </div>
               <output className="study-device-status" aria-live="polite">
                 {view.voiceSentence}
+                {` · 発話 ${view.activeCount}/3`}
                 {state.mode === 'transmitting' ? ` · ${view.elapsed}` : ''}
               </output>
               <button
@@ -240,26 +262,32 @@ export function StudyDemo({
                 {state.mode === 'transmitting'
                   ? '送信中 · 離すと終了'
                   : state.mode === 'busy'
-                    ? '仲間が話しています'
+                    ? '3人発話中 · 押したままで空き待ち'
                     : state.mode === 'requesting'
                       ? '送信準備中'
                       : '押している間、話す'}
               </button>
               <p className="study-help">
                 マウス・タッチで長押し。フォーカス中は Space / Enter
-                でも操作できます。
+                でも操作できます。受信しながら送信できます。自分を含め最大3人。
               </p>
             </div>
             <div className="study-controls">
               <fieldset>
-                <legend>仲間の声</legend>
+                <legend>仲間の声（複数選択）</legend>
                 <div className="study-options">
                   {demoMembers.map((peer) => (
                     <button
                       key={peer.id}
-                      aria-pressed={state.remote === peer.id}
-                      disabled={view.offline}
-                      onClick={() => dispatch({ type: 'speaker', id: peer.id })}
+                      aria-pressed={state.remotes.includes(peer.id)}
+                      disabled={
+                        view.offline ||
+                        (!state.remotes.includes(peer.id) &&
+                          view.activeCount >= 3)
+                      }
+                      onClick={() =>
+                        dispatch({ type: 'toggle-speaker', id: peer.id })
+                      }
                     >
                       <i
                         style={{ background: peer.color }}
@@ -274,11 +302,22 @@ export function StudyDemo({
                   onClick={() => dispatch({ type: 'quiet' })}
                   disabled={view.offline}
                 >
-                  受信を終えて待受にする
+                  仲間の発話をすべて終了
                 </button>
               </fieldset>
               <fieldset>
                 <legend>距離を変える</legend>
+                <div className="study-distance-members">
+                  {demoMembers.map((peer) => (
+                    <button
+                      key={peer.id}
+                      aria-pressed={state.selected === peer.id}
+                      onClick={() => dispatch({ type: 'select', id: peer.id })}
+                    >
+                      {id >= 55 ? peer.colorName : peer.name}の位置
+                    </button>
+                  ))}
+                </div>
                 <div className="study-position-label">
                   <span>
                     {id >= 55

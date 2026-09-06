@@ -14,7 +14,8 @@
     "test": "node --experimental-strip-types --test tests/experience.test.ts tests/studies.test.ts",
     "typecheck": "tsc --noEmit",
     "test:studies": "node scripts/test-study-ui.mjs",
-    "test:fleet-layout": "node scripts/test-fleet-layout.mjs"
+    "test:fleet-layout": "node scripts/test-fleet-layout.mjs",
+    "test:voice-mix": "node scripts/test-voice-mix.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",
