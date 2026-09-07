@@ -1,0 +1,2 @@
+# CONFIG_RW_LINK_AP is not set
+CONFIG_RW_LINK_STA=y

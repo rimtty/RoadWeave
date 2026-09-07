@@ -1,0 +1,91 @@
+I (102) esp_image: segment 1: paddr=0007e4f8 vaddr=3fc95e00 sizeESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x15 (USB_UART_CHIP_RESET),boot:0x2b (SPI_FAST_FLASH_BOOT)
+Saved PC:0x40379bb6
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x170c
+load:0x403c8700,len:0x4
+load:0x403c8704,len:0xe88
+load:0x403cb700,len:0x316c
+entry 0x403c894c
+I (26) boot: ESP-IDF v5.4.4 2nd stage bootloader
+I (27) boot: compile time Sep  8 2026 02:18:59
+I (27) boot: Multicore bootloader
+I (27) boot: chip revision: v0.2
+I (27) boot: efuse block revision: v1.4
+I (28) qio_mode: Enabling default flash chip QIO
+I (28) boot.esp32s3: Boot SPI Speed : 80MHz
+I (29) boot.esp32s3: SPI Mode       : QIO
+I (29) boot.esp32s3: SPI Flash Size : 8MB
+I (30) boot: Enabling RNG early entropy source...
+I (30) boot: Partition Table:
+I (30) boot: ## Label            Usage          Type ST Offset   Length
+I (31) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (32) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (33) boot:  2 factory          factory app      00 00 00010000 00300000
+I (34) boot: End of partition table
+I (35) esp_image: segment 0: paddr=00010020 vaddr=3c020020 size=6e4d0h (451792) map
+I (102) esp_image: segment 1: paddr=0007e4f8 vaddr=3fc95e00 size=01b20h (  6944) load
+I (104) esp_image: segment 2: paddr=00080020 vaddr=42000020 size=180d4h ( 98516) map
+I (119) esp_image: segment 3: paddr=000980fc vaddr=3fc97920 size=01858h (  6232) load
+I (121) esp_image: segment 4: paddr=0009995c vaddr=40374000 size=11d8ch ( 73100) load
+I (135) esp_image: segment 5: paddr=000ab6f0 vaddr=50000000 size=0001ch (    28) load
+I (143) boot: Loaded app from partition at offset 0x10000
+I (143) boot: Disabling RNG early entropy source...
+I (144) octal_psram: vendor id    : 0x0d (AP)
+I (144) octal_psram: dev id       : 0x02 (generation 3)
+I (145) octal_psram: density      : 0x03 (64 Mbit)
+I (145) octal_psram: good-die     : 0x01 (Pass)
+I (145) octal_psram: Latency      : 0x01 (Fixed)
+I (146) octal_psram: VCC          : 0x01 (3V)
+I (146) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (147) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+I (147) octal_psram: BurstLen     : 0x01 (32 Byte)
+I (148) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (148) octal_psram: DriveStrength: 0x00 (1/1)
+I (149) MSPI Timing: PSRAM timing tuning index: 5
+I (149) esp_psram: Found 8MB PSRAM device
+I (150) esp_psram: Speed: 80MHz
+I (150) cpu_start: Multicore app
+I (583) esp_psram: SPI SRAM memory test OK
+I (592) cpu_start: Pro cpu start user code
+I (592) cpu_start: cpu freq: 240000000 Hz
+I (592) app_init: Application information:
+I (593) app_init: Project name:     roadweave_halow_link
+I (593) app_init: App version:      a5f26f7
+I (594) app_init: Compile time:     Sep  8 2026 02:18:38
+I (594) app_init: ELF file SHA256:  0883a904c...
+I (594) app_init: ESP-IDF:          v5.4.4
+I (594) efuse_init: Min chip rev:     v0.0
+I (594) efuse_init: Max chip rev:     v0.99
+I (595) efuse_init: Chip rev:         v0.2
+I (595) heap_init: Initializing. RAM available for dynamic allocation:
+I (596) heap_init: At 3FC99B78 len 0004FB98 (318 KiB): RAM
+I (596) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (596) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (596) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (597) esp_psram: Adding pool of 8192K of PSRAM memory to heap allocator
+I (598) spi_flash: detected chip: gd
+I (598) spi_flash: flash io: qio
+I (598) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (599) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (600) main_task: Started on CPU0
+I (601) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (602) main_task: Calling app_main()
+RW_LINK_ROLE=AP ESP32_MAC=44:b1:76:b0:57:20 PSRAM_BYTES=8388608
+RW_LINK_RF=DISABLED; no radio firmware boot, scan, association or TX
+I (1803) gpio: GPIO[1]| InputEn: 0| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0
+RW_LINK_FW_CONTAINER=PASS bytes_before_eof=399792 tlvs=22
+RW_LINK_BCF_CONTAINER=PASS bytes_before_eof=536 tlvs=12
+RW_LINK_FILES=PASS
+I (1805) gpio: GPIO[4]| InputEn: 0| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0
+I (1805) gpio: GPIO[3]| InputEn: 1| OutputEn: 0| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0
+RW_LINK_SPI=PASS chip_id=0x00000306 matched=100/100 ret=0
+I (1899) gpio: GPIO[9]| InputEn: 0| OutputEn: 0| OpenDrain: 0| Pullup: 1| Pulldown: 0| Intr:0
+I (1900) gpio: GPIO[8]| InputEn: 0| OutputEn: 0| OpenDrain: 0| Pullup: 1| Pulldown: 0| Intr:0
+I (1901) gpio: GPIO[7]| InputEn: 0| OutputEn: 0| OpenDrain: 0| Pullup: 1| Pulldown: 0| Intr:0
+RW_LINK_RESET_N=LOW; BUSY/WAKE not used for power save
+RW_LINK_PREFLIGHT=PASS
+RW_LINK_RADIO_RESULT=NOT_RUN
+RW_LINK_DONE
