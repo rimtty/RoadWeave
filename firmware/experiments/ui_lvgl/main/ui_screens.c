@@ -4,10 +4,12 @@
 #include <math.h>
 #include <string.h>
 #include "ui_screens.h"
+#include "ui_dot.h"
 
 static lv_obj_t *s_scr[UI_SCREEN_COUNT];
 static ui_screen_t s_cur = UI_SCREEN_GROUP;
 static ui_action_cb_t s_cb;
+static lv_obj_t *s_dot;
 static bool s_ptt_pressed;
 
 // shared top bar per screen
@@ -162,13 +164,17 @@ void ui_create(lv_display_t *disp)
     s_ptt_pressed = false;
     for (int i = 0; i < UI_SCREEN_COUNT; i++) s_scr[i] = make_screen((ui_screen_t)i);
     build_group(); build_radar(); build_convoy();
+    s_dot = ui_dot_create();
     ui_show(UI_SCREEN_GROUP);
 }
 
 void ui_show(ui_screen_t s) {
-    if (s < 0 || s >= UI_SCREEN_COUNT) return;
+    if ((s < 0 || s >= UI_SCREEN_COUNT) && !ui_dot_is_screen(s)) return;
     if (s_ptt_pressed) { s_ptt_pressed = false; act("ptt_up", 0); }
-    s_cur = s; lv_screen_load(s_scr[s]);
+    ui_dot_cancel_touch();
+    s_cur = s;
+    if (ui_dot_is_screen(s)) { ui_dot_show((unsigned)s); lv_screen_load(s_dot); }
+    else lv_screen_load(s_scr[s]);
 }
 ui_screen_t ui_current(void) { return s_cur; }
 
@@ -197,6 +203,8 @@ void ui_update(const ui_model_t *m)
         bounded.n_peers = m->n_peers < 0 ? 0 : UI_MAX_PEERS;
         m = &bounded;
     }
+    ui_dot_update(m);
+    if (ui_dot_is_screen(s_cur)) return;
     update_topbar(m);
     // GROUP
     if (m->voice == UI_VOICE_RX) lv_label_set_text_fmt(s_group_big, "%s", m->talker);

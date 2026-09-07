@@ -33,4 +33,11 @@ menu "RoadWeave UI (2.8in ILI9341 + XPT2046)"
     config RW_UI_SIMULATE
         bool "Drive the UI from simulated convoy/voice data (no radio/GPS needed)"
         default y
+    config RW_UI_DOT_STUDY
+        int "Initial Web dot study (0=legacy, 13/14/15/16=dot designs)"
+        range 0 16
+        default 0
+        help
+            Use 13, 14, 15 or 16 to preview Web dot studies. Other values use
+            the legacy UI. Swipe left/right to cycle the four dot screens.
 endmenu

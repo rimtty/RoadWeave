@@ -1,14 +1,19 @@
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "scenarios.h"
 #include "ui_simulation.h"
+#include "ui_dot.h"
+#include "capture.h"
 
 static bool ptt, muted;
 static int downs, ups, mutes;
 static const char *const names[] = {
     "group", "radar", "convoy", "empty", "max_group", "max_convoy", "stale",
-    "radar_east", "radar_far", "rx", "tx", "busy", "link_down"
+    "radar_east", "radar_far", "rx", "tx", "busy", "link_down",
+    "dot13", "dot14", "dot15", "dot16", "dot_idle", "dot_tx", "dot_busy",
+    "dot_stale", "dot_offline", "dot_muted", "dot_far"
 };
 
 bool scenario_valid(const char *name)
@@ -20,6 +25,12 @@ bool scenario_valid(const char *name)
 
 ui_screen_t scenario_screen(const char *name)
 {
+    if (strncmp(name,"dot",3)==0) {
+        if(name[3]>='1'&&name[3]<='9') return (ui_screen_t)atoi(name+3);
+        if(!strcmp(name,"dot_stale")||!strcmp(name,"dot_offline"))return UI_SCREEN_DOT15;
+        if(!strcmp(name,"dot_far"))return UI_SCREEN_DOT13;
+        return UI_SCREEN_DOT14;
+    }
     if (strncmp(name, "radar", 5) == 0) return UI_SCREEN_RADAR;
     if (strcmp(name, "convoy") == 0 || strcmp(name, "max_convoy") == 0 ||
         strcmp(name, "stale") == 0) return UI_SCREEN_CONVOY;
@@ -28,6 +39,17 @@ ui_screen_t scenario_screen(const char *name)
 
 void scenario_fill(const char *name, float seconds, ui_model_t *m)
 {
+    if(strncmp(name,"dot",3)==0) {
+        ui_simulate_dot(m,seconds);
+        if(!strcmp(name,"dot_idle"))m->voice=UI_VOICE_IDLE;
+        if(!strcmp(name,"dot_tx"))m->voice=UI_VOICE_TX;
+        if(!strcmp(name,"dot_busy"))m->voice=UI_VOICE_BUSY;
+        if(!strcmp(name,"dot_stale"))for(int i=0;i<3;i++)m->peers[i].age=POS_PEER_STALE;
+        if(!strcmp(name,"dot_offline"))m->link_ok=false;
+        if(!strcmp(name,"dot_muted"))for(int i=0;i<3;i++)m->peers[i].muted=true;
+        if(!strcmp(name,"dot_far")){m->peers[0].dist_m=12345;m->peers[0].along_m=-12345;}
+        return;
+    }
     ui_simulate(m, seconds);
     m->voice = UI_VOICE_IDLE;
     for (int i = 0; i < m->n_peers; i++) m->peers[i].talking = false;
@@ -88,7 +110,7 @@ void sim_action(const char *action, uint32_t arg)
 void sim_apply_controls(ui_model_t *m)
 {
     if (ptt) m->voice = UI_VOICE_TX;
-    for (int i = 0; i < m->n_peers; i++) m->peers[i].muted = muted;
+    for (int i = 0; i < m->n_peers; i++) m->peers[i].muted = m->peers[i].muted || muted;
 }
 
 static lv_obj_t *find_text(lv_obj_t *obj, const char *text)
@@ -109,6 +131,13 @@ static lv_obj_t *find_text(lv_obj_t *obj, const char *text)
 int test_scenario(const char *name, const ui_model_t *m)
 {
     CHECK(ui_current() == scenario_screen(name));
+    if(strncmp(name,"dot",3)==0) {
+        CHECK(lv_obj_get_width(lv_screen_active())==240);
+        CHECK(lv_obj_get_height(lv_screen_active())==320);
+        CHECK(!lv_obj_has_flag(lv_screen_active(),LV_OBJ_FLAG_SCROLLABLE));
+        CHECK(m->n_peers==3);
+        return 0;
+    }
     CHECK(contains_text(lv_screen_active(), "GROUP A"));
     lv_obj_t *battery = find_text(lv_screen_active(), "%");
     lv_obj_t *link = find_text(lv_screen_active(), LV_SYMBOL_WIFI);

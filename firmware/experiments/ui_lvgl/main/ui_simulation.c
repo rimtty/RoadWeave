@@ -2,6 +2,21 @@
 #include <string.h>
 #include "ui_simulation.h"
 
+/* Web study fixture, shared with the embedded preview. */
+void ui_simulate_dot(ui_model_t *m, float t)
+{
+    memset(m, 0, sizeof(*m));
+    m->animation_ms = (uint32_t)(fmodf(fmaxf(0,t),2080.f)*1000.f);
+    strcpy(m->group, "HAKONE");m->battery_pct=87;m->link_rssi_dbm=-64;m->link_ok=true;
+    m->n_peers=3;m->voice=UI_VOICE_RX;strcpy(m->talker,"AKI");
+    const char *names[]={"AKI","REN","MEI"};const float along[]={120,-85,-240};
+    for(int i=0;i<3;i++) {
+        ui_peer_t *p=&m->peers[i];p->id=(uint32_t)(0x101+i);strcpy(p->callsign,names[i]);
+        p->along_m=along[i];p->dist_m=fabsf(along[i]);p->bearing_deg=along[i]<0?180.f:0.f;
+        p->age=POS_PEER_FRESH;p->talking=i==0;p->rssi_dbm=(int8_t)(-64-i*6);
+    }
+}
+
 // --- simulator: 3 cars on a gentle curve, self in the middle ---
 void ui_simulate(ui_model_t *m, float t)
 {
