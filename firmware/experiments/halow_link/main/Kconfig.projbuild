@@ -1,0 +1,35 @@
+menu "RoadWeave HaLow link test"
+choice RW_LINK_ROLE
+    prompt "Device role"
+    default RW_LINK_AP
+config RW_LINK_AP
+    bool "AP / UDP echo server"
+config RW_LINK_STA
+    bool "STA / UDP probe client"
+endchoice
+config RW_LINK_RF_ENABLE
+    bool "Run radio connection test (requires prepared RF test setup)"
+    default n
+    help
+        Disabled: inspect SPI and embedded FW/BCF files only; never boot radio firmware.
+        Enabled: starts AP beacons or STA association and transmits UDP packets.
+        WM6180 RF port must have a suitable load and the test setup must permit RF operation.
+config RW_LINK_SSID
+    string "Test SSID"
+    default "RoadWeaveBench"
+config RW_LINK_PSK
+    string "Test WPA3 passphrase (keep local)"
+    default ""
+config RW_LINK_CHANNEL
+    int "AP S1G channel (0 means not configured)"
+    range 0 255
+    default 0
+config RW_LINK_OPCLASS
+    int "AP operating class (0 means not configured)"
+    range 0 255
+    default 0
+config RW_LINK_TX_POWER_DBM
+    int "Maximum transmit power override (dBm; 0 disables override in SDK)"
+    range 1 13
+    default 1
+endmenu

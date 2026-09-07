@@ -1,0 +1,100 @@
+ESP-ROM:esp32s3-20210327
+Build:Mar 27 2021
+rst:0x15 (USB_UART_CHIP_RESET),boot:0x8 (SPI_FAST_FLASH_BOOT)
+Saved PC:0x40041a76
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fce2820,len:0x170c
+load:0x403c8700,len:0x4
+load:0x403c8704,len:0xe88
+load:0x403cb700,len:0x316c
+entry 0x403c894c
+I (26) boot: ESP-IDF v5.4.4 2nd stage bootloader
+I (27) boot: compile time Sep  8 2026 02:19:58
+I (27) boot: Multicore bootloader
+I (28) boot: chip revision: v0.2
+I (28) boot: efuse block revision: v1.4
+I (29) qio_mode: Enabling default flash chip QIO
+I (29) boot.esp32s3: Boot SPI Speed : 80MHz
+I (30) boot.esp32s3: SPI Mode       : QIO
+I (30) boot.esp32s3: SPI Flash Size : 8MB
+I (31) boot: Enabling RNG early entropy source...
+I (31) boot: Partition Table:
+I (32) boot: ## Label            Usage          Type ST Offset   Length
+I (33) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (34) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (35) boot:  2 factory          factory app      00 00 00010000 00300000
+I (36) boot: End of partition table
+I (36) esp_image: segment 0: paddr=00010020 vaddr=3c0b0020 size=9df44h (646980) map
+I (133) esp_image: segment 1: paddr=000adf6c vaddr=3fc97400 size=020ach (  8364) load
+I (136) esp_image: segment 2: paddr=000b0020 vaddr=42000020 size=ad430h (709680) map
+I (242) esp_image: segment 3: paddr=0015d458 vaddr=3fc994ac size=016a8h (  5800) load
+I (243) esp_image: segment 4: paddr=0015eb08 vaddr=40374000 size=133a0h ( 78752) load
+I (258) esp_image: segment 5: paddr=00171eb0 vaddr=50000000 size=0001ch (    28) load
+I (267) boot: Loaded app from partition at offset 0x10000
+I (267) boot: Disabling RNG early entropy source...
+I (268) octal_psram: vendor id    : 0x0d (AP)
+I (268) octal_psram: dev id       : 0x02 (generation 3)
+I (269) octal_psram: density      : 0x03 (64 Mbit)
+I (269) octal_psram: good-die     : 0x01 (Pass)
+I (270) octal_psram: Latency      : 0x01 (Fixed)
+I (270) octal_psram: VCC          : 0x01 (3V)
+I (271) octal_psram: SRF          : 0x01 (Fast Refresh)
+I (271) octal_psram: BurstType    : 0x01 (Hybrid Wrap)
+I (272) octal_psram: BurstLen     : 0x01 (32 Byte)
+I (272) octal_psram: Readlatency  : 0x02 (10 cycles@Fixed)
+I (273) octal_psram: DriveStrength: 0x00 (1/1)
+I (274) MSPI Timing: PSRAM timing tuning index: 10
+I (274) esp_psram: Found 8MB PSRAM device
+I (274) esp_psram: Speed: 80MHz
+I (275) cpu_start: Multicore app
+I (701) esp_psram: SPI SRAM memory test OK
+I (710) cpu_start: Pro cpu start user code
+I (710) cpu_start: cpu freq: 240000000 Hz
+I (710) app_init: Application information:
+I (711) app_init: Project name:     roadweave_halow_link
+I (711) app_init: App version:      a5f26f7
+I (712) app_init: Compile time:     Sep  8 2026 02:26:32
+I (712) app_init: ELF file SHA256:  018885b23...
+I (712) app_init: ESP-IDF:          v5.4.4
+I (713) efuse_init: Min chip rev:     v0.0
+I (713) efuse_init: Max chip rev:     v0.99
+I (714) efuse_init: Chip rev:         v0.2
+I (715) heap_init: Initializing. RAM available for dynamic allocation:
+I (716) heap_init: At 3FC9E578 len 0004B198 (300 KiB): RAM
+I (716) heap_init: At 3FCE9710 len 00005724 (21 KiB): RAM
+I (717) heap_init: At 3FCF0000 len 00008000 (32 KiB): DRAM
+I (717) heap_init: At 600FE000 len 00001FE8 (7 KiB): RTCRAM
+I (718) esp_psram: Adding pool of 8192K of PSRAM memory to heap allocator
+I (719) spi_flash: detected chip: gd
+I (719) spi_flash: flash io: qio
+I (720) sleep_gpio: Configure to isolate all GPIO pins in sleep state
+I (721) sleep_gpio: Enable automatic switching of GPIO sleep configuration
+I (722) main_task: Started on CPU0
+I (723) esp_psram: Reserving pool of 32K of internal memory for DMA/internal allocations
+I (724) main_task: Calling app_main()
+RW_LINK_ROLE=STA ESP32_MAC=44:b1:76:b0:57:1c PSRAM_BYTES=8388608
+RW_LINK_RF=ENABLED
+I (1933) gpio: GPIO[1]| InputEn: 0| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0
+I (1934) Morse Micro HaLow NetIF: Setting Channel List US
+I (1934) gpio: GPIO[4]| InputEn: 0| OutputEn: 1| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0
+I (1935) gpio: GPIO[3]| InputEn: 1| OutputEn: 0| OpenDrain: 0| Pullup: 0| Pulldown: 0| Intr:0
+I (2432) Morse Micro HaLow NetIF: -----------------------------------
+I (2433) Morse Micro HaLow NetIF:   BCF API version:         8.0.0
+I (2434) Morse Micro HaLow NetIF:   BCF build version:       6b00e4d 2031952_Modified _Modif
+I (2435) Morse Micro HaLow NetIF:   BCF board description:   mf16858
+I (2436) Morse Micro HaLow NetIF:   Morselib version:        2.11.2
+I (2437) Morse Micro HaLow NetIF:   Morse firmware version:  1.17.8
+I (2438) Morse Micro HaLow NetIF:   Morse chip ID:           0x0306
+I (2439) Morse Micro HaLow NetIF: -----------------------------------
+I (2440) Morse Micro HaLow NetIF: Wi-Fi MAC address: a8:dd:9f:4d:c1:ea
+RW_LINK_RADIO_CONFIG country=US channel=3 opclass=1 max_tx_dbm=1 psk=REDACTED
+I (2442) Morse Micro HaLow NetIF: Attempting to connect to: RoadWeaveBench
+RW_LINK_CONNECT_TIMEOUT bits=0
+I (32522) gpio: GPIO[9]| InputEn: 0| OutputEn: 0| OpenDrain: 0| Pullup: 1| Pulldown: 0| Intr:0
+I (32522) gpio: GPIO[8]| InputEn: 0| OutputEn: 0| OpenDrain: 0| Pullup: 1| Pulldown: 0| Intr:0
+I (32523) gpio: GPIO[7]| InputEn: 0| OutputEn: 0| OpenDrain: 0| Pullup: 1| Pulldown: 0| Intr:0
+RW_LINK_RADIO_SHUTDOWN
+RW_LINK_RADIO_RESULT=FAIL
+RW_LINK_DONE
+I (32544) main_task: Returned from app_main()

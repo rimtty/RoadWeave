@@ -1,0 +1,3 @@
+dependencies:
+  morsemicro/halow:
+    version: "2.11.2-esp32-2"
