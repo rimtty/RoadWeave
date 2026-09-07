@@ -3,6 +3,17 @@
 #include "src/libs/lodepng/lodepng.h"
 #include "capture.h"
 
+uint32_t capture_outside_wave_hash(void)
+{
+    const lv_draw_buf_t *b=lv_display_get_buf_active(NULL);uint32_t h=2166136261u;
+    for(unsigned y=0;y<320;y++)for(unsigned x=0;x<240;x++) {
+        if(x>=20&&x<=220&&y>=130&&y<=186)continue;
+        const uint8_t *p=b->data+y*b->header.stride+x*2;
+        h=((h^p[0])*16777619u^p[1])*16777619u;
+    }
+    return h;
+}
+
 uint32_t capture_frame_hash(void)
 {
     const lv_draw_buf_t *buf = lv_display_get_buf_active(NULL);

@@ -21,10 +21,12 @@ typedef struct {
     uint8_t battery_pct; int8_t link_rssi_dbm; bool link_ok;
     ui_voice_t voice; char talker[8];
     float heading_deg; float speed_kmh;
+    uint32_t animation_ms; // deterministic UI motion; freeze with simulator time
     ui_peer_t peers[UI_MAX_PEERS]; int n_peers;
 } ui_model_t;
 
-typedef enum { UI_SCREEN_GROUP = 0, UI_SCREEN_RADAR, UI_SCREEN_CONVOY, UI_SCREEN_COUNT } ui_screen_t;
+typedef enum { UI_SCREEN_GROUP = 0, UI_SCREEN_RADAR, UI_SCREEN_CONVOY, UI_SCREEN_COUNT,
+    UI_SCREEN_DOT13 = 13, UI_SCREEN_DOT14, UI_SCREEN_DOT15, UI_SCREEN_DOT16 } ui_screen_t;
 
 void ui_create(lv_display_t *disp);            // builds all screens, shows GROUP
 void ui_update(const ui_model_t *m);           // call from the LVGL-locked context, ~10 Hz

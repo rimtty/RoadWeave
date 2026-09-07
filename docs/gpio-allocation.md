@@ -1,6 +1,7 @@
 # ESP32-S3 GPIO割り当て案
 
-更新日: 2026-09-05  
+更新日: 2026-09-08
+
 対象: ESP32-S3-WROOM-1-N16R8 + HC01 V2、Rev.A draft 0.1
 
 ## 1. 方針
@@ -31,6 +32,13 @@ Morse Micro HaLow component `2.11.2-esp32-2`同梱の`sdkconfig.defaults.seeed_x
 | SPI MOSI | 9 |
 
 この割り当てはWio-WM6180/XIAO header用であり、下記HC01 V2 Rev.A案へ転記しない。BCFは`bcf_fgh100mhaamd.bin`、chipはMM6108を指定する。
+
+**Wio-WM6180のBUSY/WAKE制約（2026-09-08実機確認）:** 上表はソフトウェアprofileの割り当てであり、全信号の物理接続を意味しない。
+[Seeed公式回路図](https://files.seeedstudio.com/wiki/wifi_halow/res/WI-FI_HALOW_FGH100M_EXT01_V30_SCH_20241107.pdf)では
+BUSY経路のR17とWAKEUP_IN経路のR10はDNP（未実装）。今回の実機ではSPI 40 MHz、chip ID 0x0306の100回連続読み出し、bulk転送がPASSしたが、
+MM6108側BUSY出力レジスタをHIGHにしてもESP32 GPIO5はLOWのままだった。
+[Morse Microの説明](https://community.morsemicro.com/t/mm-iot-esp32-porting-assistant-error-seeed-xiao-halow/1011/2)もBUSY未配線を明記し、通信時の省電力無効化を案内している。
+標準実装ではBUSY依存の省電力動作を前提にしない。詳細は[実機SPI診断記録](bringup/wm6180-spi-2026-09-08.md)。
 
 ## 2. 割り当て表
 

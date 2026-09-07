@@ -4,7 +4,8 @@ param(
     [ValidateSet('Run', 'Build', 'Test', 'Capture', 'AcceptBaselines')]
     [string] $Action = 'Run',
     [ValidateSet('group','radar','convoy','empty','max_group','max_convoy','stale',
-        'radar_east','radar_far','rx','tx','busy','link_down')]
+        'radar_east','radar_far','rx','tx','busy','link_down','dot13','dot14','dot15','dot16',
+        'dot_idle','dot_tx','dot_busy','dot_stale','dot_offline','dot_muted','dot_far')]
     [string] $Scenario = 'group',
     [ValidateRange(1,3)][int] $Zoom = 2,
     [switch] $Paused,
@@ -17,7 +18,8 @@ $source = Join-Path $repo 'firmware\experiments\ui_lvgl\pc'
 $build = Join-Path $source 'build'
 $candidates = Join-Path $build 'candidates'
 $scenarios = @('group','radar','convoy','empty','max_group','max_convoy','stale',
-    'radar_east','radar_far','rx','tx','busy','link_down')
+    'radar_east','radar_far','rx','tx','busy','link_down','dot13','dot14','dot15','dot16',
+    'dot_idle','dot_tx','dot_busy','dot_stale','dot_offline','dot_muted','dot_far')
 $selected = if ($All) { $scenarios } else { @($Scenario) }
 
 # This is an explicit, separate operation. Test/Capture never update baselines.

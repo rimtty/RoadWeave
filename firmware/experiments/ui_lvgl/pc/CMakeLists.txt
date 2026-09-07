@@ -39,13 +39,15 @@ if(MSVC)
 endif()
 
 add_library(roadweave_ui STATIC ../main/ui_screens.c ../main/ui_simulation.c
+    ../main/ui_dot.c ../main/fonts/rw_dot_font_7.c ../main/fonts/rw_dot_font_8.c
+    ../main/fonts/rw_dot_font_9.c ../main/fonts/rw_dot_font_10.c ../main/fonts/rw_dot_font_18.c
     ../../../components/position/position.c)
 target_include_directories(roadweave_ui PUBLIC ../main ../../../components/position/include)
 target_link_libraries(roadweave_ui PUBLIC lvgl::lvgl)
 if(NOT MSVC)
     target_link_libraries(roadweave_ui PUBLIC m)
 endif()
-add_executable(roadweave_ui_sim main.c scenarios.c capture.c)
+add_executable(roadweave_ui_sim main.c scenarios.c capture.c dot_tests.c)
 target_link_libraries(roadweave_ui_sim PRIVATE roadweave_ui)
 target_compile_definitions(roadweave_ui_sim PRIVATE SDL_MAIN_HANDLED)
 if(MSVC)
@@ -54,7 +56,8 @@ if(MSVC)
 endif()
 
 set(RW_SCENARIOS group radar convoy empty max_group max_convoy stale
-    radar_east radar_far rx tx busy link_down)
+    radar_east radar_far rx tx busy link_down dot13 dot14 dot15 dot16
+    dot_idle dot_tx dot_busy dot_stale dot_offline dot_muted dot_far)
 foreach(scenario IN LISTS RW_SCENARIOS)
     file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/results/${scenario}")
     add_test(NAME image_${scenario} COMMAND ${CMAKE_COMMAND}
@@ -66,11 +69,13 @@ foreach(scenario IN LISTS RW_SCENARIOS)
         WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/results/${scenario}" TIMEOUT 20)
 endforeach()
 add_test(NAME interactions COMMAND roadweave_ui_sim --test-input)
+add_test(NAME dot_interactions COMMAND roadweave_ui_sim --test-dot)
+set_tests_properties(dot_interactions PROPERTIES TIMEOUT 30)
 set_tests_properties(interactions PROPERTIES TIMEOUT 20)
 file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/results/window"
     "${CMAKE_CURRENT_BINARY_DIR}/results/compare_contract")
 add_test(NAME sdl_window COMMAND roadweave_ui_sim --test-window)
-set_tests_properties(sdl_window PROPERTIES TIMEOUT 20
+set_tests_properties(sdl_window PROPERTIES TIMEOUT 30
     ENVIRONMENT "SDL_VIDEODRIVER=dummy;SDL_AUDIODRIVER=dummy"
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/results/window")
 add_test(NAME compare_contract COMMAND ${CMAKE_COMMAND}

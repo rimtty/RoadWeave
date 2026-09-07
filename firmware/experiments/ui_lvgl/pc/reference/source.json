@@ -1,0 +1,18 @@
+{
+  "viewport": [
+    1440,
+    1100
+  ],
+  "card": [
+    300,
+    400
+  ],
+  "scale": 0.8,
+  "reducedMotion": true,
+  "sources": {
+    "collection.tsx": "caacaadd38e97e659d19e33d2b017ab156c725e63916b275f0e002cf69b36887",
+    "explore.css": "7d6bab9b3243500532d753dd2991c91d29212c5cd8d2544949103550aae94f91",
+    "demo/graphics.tsx": "ac24a26b93fc60d6f7d82c38f4133cffa8cc984bb98a4d37a2ab26d01977a135",
+    "demo/model.ts": "b894fa9a171ef152ef3853ba9b338baaaa2d94e039615b45b4eec680ec9a65c5"
+  }
+}

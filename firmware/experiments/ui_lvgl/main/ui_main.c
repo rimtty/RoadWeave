@@ -98,14 +98,24 @@ void app_main(void)
     lv_display_t *disp = display_init();
     backlight_set(80);
     ui_set_action_cb(on_action);
-    if (lvgl_port_lock(0)) { ui_create(disp); lvgl_port_unlock(); }
+    if (lvgl_port_lock(0)) {
+        ui_create(disp);
+#if CONFIG_RW_UI_DOT_STUDY >= 13 && CONFIG_RW_UI_DOT_STUDY <= 16
+        ui_show((ui_screen_t)CONFIG_RW_UI_DOT_STUDY);
+#endif
+        lvgl_port_unlock();
+    }
     ESP_LOGI(TAG, "UI up: %dx%d, SPI %d MHz, simulate=%d", LCD_H_RES, LCD_V_RES, CONFIG_RW_LCD_SPI_MHZ, CONFIG_RW_UI_SIMULATE);
 
     static ui_model_t model; int64_t t0 = esp_timer_get_time(); uint32_t frames = 0;
     for (;;) {
         float t = (float)((esp_timer_get_time() - t0) / 1000000.0);
 #if CONFIG_RW_UI_SIMULATE
+#if CONFIG_RW_UI_DOT_STUDY >= 13 && CONFIG_RW_UI_DOT_STUDY <= 16
+        ui_simulate_dot(&model, t);
+#else
         ui_simulate(&model, t);
+#endif
 #endif
         if (lvgl_port_lock(50)) { ui_update(&model); lvgl_port_unlock(); }
         if (++frames % 50 == 0) ESP_LOGI(TAG, "screen %d, %lu updates, %.1f s", ui_current(), (unsigned long)frames, (double)t);
