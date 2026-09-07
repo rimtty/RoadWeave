@@ -84,6 +84,17 @@ idf.py menuconfig build
 
 Porting assistantはmemory、timing、task、SPI、chip ID、firmware/BCF、bus throughput、BUSYを検査する。1項目でもFAILならAP/STAへ進まず、node交換でXIAO側/WM6180側を切り分ける。
 
+### 2026-09-08 追記: Wio-WM6180のBUSY未配線
+
+Wio-WM6180標準実装のBUSY検査失敗には既知の基板制約がある。公式回路図のR17（BUSY）とR10（WAKEUP_IN）はDNPであり、
+[Morse MicroもBUSY未配線を説明している](https://community.morsemicro.com/t/mm-iot-esp32-porting-assistant-error-seeed-xiao-halow/1011/2)。
+BUSY単独の失敗をSPI故障や交換対象と即断しない。SPI起動・chip ID・bulk転送の結果とは分けて記録し、
+標準基板ではBUSY検査を適用外として扱う根拠を残す。通信アプリでは省電力を無効化する。
+これはその他のFAILや未実施項目を免除するものではない。
+
+[今回の実機記録](wm6180-spi-2026-09-08.md)では、無線FWを起動しないSPI診断でchip ID 0x0306、100回連続読み出し、
+bulk転送、約7.52 Mbit/sのSPI転送がPASS。無線通信、FW/BCF起動、SPI IRQ割り込み機能は未検証。
+
 ### 2026-09-05 追記: 実行前チェック
 
 - porting assistant は恒久 toolchain（`~/esp/v5.4.4/esp-idf`）で XIAO profile 付き再ビルド済み。**flash 前に `idf.py menuconfig` で country code を設定する**（未設定 `??` のままでは実行しない）。
