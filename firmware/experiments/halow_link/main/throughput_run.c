@@ -106,9 +106,19 @@ struct tx_stats {
 static QueueHandle_t command_queue;
 static TaskHandle_t command_task;
 
+static void flush_control_log(void)
+{
+    /* A final USB Serial/JTAG transfer of exactly 64 bytes needs a zero-byte
+     * packet to release it on the host. IDF's VFS fsync explicitly performs
+     * that extra FIFO flush; fflush alone only empties newlib's buffer. */
+    (void)fflush(stdout);
+    (void)fsync(fileno(stdout));
+}
+
 static void print_reject(const char *reason)
 {
     printf("RW_TPUT_CMD_REJECT reason=%s\n", reason);
+    flush_control_log();
 }
 
 static bool parse_command(const char *line, struct tput_command *out)
@@ -284,6 +294,7 @@ static bool take_stage_command(uint32_t stage, struct tput_command *out)
     if (xQueueReceive(command_queue, out, 0) != pdTRUE) return false;
     if (out->type == COMMAND_STOP) {
         printf("RW_TPUT_CMD_ACK command=STOP\n");
+        flush_control_log();
         return true;
     }
     if (out->stage != stage) {
@@ -292,6 +303,7 @@ static bool take_stage_command(uint32_t stage, struct tput_command *out)
     }
     if (out->type == COMMAND_ABORT) {
         printf("RW_TPUT_CMD_ACK command=ABORT stage=%" PRIu32 "\n", stage);
+        flush_control_log();
         return true;
     }
     if (out->type == COMMAND_DRAIN) return true;
@@ -342,6 +354,7 @@ static void rx_summary(const struct tput_command *command, const struct rx_stats
            stats->start_us, stats->end_us, stats->first_active_us,
            stats->last_active_us, span, stats->drain_start_us,
            stats->drain_end_us, stats->aborted);
+    flush_control_log();
 }
 
 static enum stage_result receive_stage(const struct tput_command *command,
@@ -388,6 +401,7 @@ static enum stage_result receive_stage(const struct tput_command *command,
            "STA",
 #endif
            ip, TPUT_PORT, ready_us);
+    flush_control_log();
     enum stage_result result = STAGE_OK;
     while (esp_timer_get_time() < session_deadline &&
            esp_timer_get_time() < max_deadline) {
@@ -425,6 +439,7 @@ static enum stage_result receive_stage(const struct tput_command *command,
                            " sent=%" PRIu32 "\n", command->stage, control.sent);
                     printf("RW_TPUT_RX_DRAIN stage=%" PRIu32 " t_us=%" PRId64
                            " duration_ms=3000\n", command->stage, stats.drain_start_us);
+                    flush_control_log();
                 }
             }
         }
@@ -588,6 +603,7 @@ static void tx_summary(const struct tput_command *command, const struct tx_stats
            stats->send_fail, (uint64_t)stats->sent * command->packet_bytes,
            (uint64_t)stats->sent * body, stats->start_acked, stats->end_acked,
            stats->start_us, stats->end_us, duration, stats->aborted);
+    flush_control_log();
 }
 
 static enum stage_result send_stage(const struct tput_command *command,
@@ -620,6 +636,7 @@ static enum stage_result send_stage(const struct tput_command *command,
     printf("RW_TPUT_SEND_ACK stage=%" PRIu32 " peer=%s duration_s=%" PRIu32
            " rate_kbps=%" PRIu32 " packet_bytes=%u\n", command->stage,
            command->peer, command->duration_s, command->rate_kbps, command->packet_bytes);
+    flush_control_log();
     struct tx_stats stats = {0};
     enum stage_result result = STAGE_OK;
     stats.start_acked = control_exchange(fd, PKT_START, PKT_ACK_START, command->stage,
@@ -639,6 +656,7 @@ static enum stage_result send_stage(const struct tput_command *command,
           command->rate_kbps : 0;
     printf("RW_TPUT_TX_START stage=%" PRIu32 " t_us=%" PRId64 "\n",
            command->stage, stats.start_us);
+    flush_control_log();
     while (esp_timer_get_time() < target_end && esp_timer_get_time() < session_deadline) {
         struct tput_command control;
         if (take_stage_command(command->stage, &control)) {
@@ -690,6 +708,7 @@ static enum stage_result send_stage(const struct tput_command *command,
     stats.end_us = esp_timer_get_time();
     printf("RW_TPUT_TX_END stage=%" PRIu32 " t_us=%" PRId64
            " sent=%" PRIu32 "\n", command->stage, stats.end_us, stats.sent);
+    flush_control_log();
     if (stats.end_us + 100000 < target_end) stats.aborted = true;
     if (result == STAGE_OK && !stats.aborted) {
         stats.end_acked = control_exchange(fd, PKT_END, PKT_ACK_END, command->stage,
@@ -747,6 +766,7 @@ bool run_throughput(void)
            "STA",
 #endif
            ip, TPUT_PORT, begin_us);
+    flush_control_log();
     bool all_ok = true, stopped = false;
     uint32_t last_stage = 0, stages = 0;
     while (esp_timer_get_time() < deadline) {
@@ -754,6 +774,7 @@ bool run_throughput(void)
         if (xQueueReceive(command_queue, &command, pdMS_TO_TICKS(100)) != pdTRUE) continue;
         if (command.type == COMMAND_STOP) {
             printf("RW_TPUT_CMD_ACK command=STOP\n");
+            flush_control_log();
             stopped = true;
             break;
         }
@@ -784,6 +805,7 @@ bool run_throughput(void)
            "STA",
 #endif
            stages, all_ok, stopped, (esp_timer_get_time() - begin_us) / 1000);
+    flush_control_log();
     vTaskDelete(command_task);
     command_task = NULL;
     vQueueDelete(command_queue);
