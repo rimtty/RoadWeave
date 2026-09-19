@@ -36,6 +36,8 @@
 static EventGroupHandle_t events;
 static esp_netif_t *netif;
 static struct mmwlan_s1g_channel_list bench_channels;
+/* One 8 MHz operating channel, four 2 MHz and eight 1 MHz subchannels. */
+static struct mmwlan_s1g_channel bench_channel_entries[13];
 #ifdef CONFIG_RW_LINK_CONTINUOUS
 static bool radio_shutdown_ok;
 bool validation_radio_shutdown_ok(void)
@@ -167,11 +169,32 @@ static bool select_bench_channel(void)
         if (channel->s1g_chan_num != CONFIG_RW_LINK_CHANNEL ||
             channel->s1g_operating_class != CONFIG_RW_LINK_OPCLASS) continue;
         bench_channels = *domain;
+        bench_channel_entries[0] = *channel;
         bench_channels.num_channels = 1;
-        bench_channels.channels = channel;
+        bench_channels.channels = bench_channel_entries;
+        /* The SDK resolves an AP's 2 MHz primary channel from this same list.
+         * Include only subchannels contained in the selected operating band;
+         * the AP remains pinned to channel/op-class from the test config. */
+        if (channel->bw_mhz > 2) {
+            unsigned primary_count = 0;
+            for (unsigned j = 0; j < domain->num_channels; ++j) {
+                const struct mmwlan_s1g_channel *sub = &domain->channels[j];
+                if (sub->bw_mhz != 1 && sub->bw_mhz != 2) continue;
+                int64_t delta = (int64_t)sub->centre_freq_hz - channel->centre_freq_hz;
+                if (delta < 0) delta = -delta;
+                if (2 * delta + (int64_t)sub->bw_mhz * 1000000 >
+                    (int64_t)channel->bw_mhz * 1000000) continue;
+                if (bench_channels.num_channels >=
+                    sizeof(bench_channel_entries) / sizeof(bench_channel_entries[0])) return false;
+                bench_channel_entries[bench_channels.num_channels++] = *sub;
+                if (sub->bw_mhz == 2) ++primary_count;
+            }
+            if (primary_count != channel->bw_mhz / 2) return false;
+        }
         enum mmwlan_status status = mmwlan_set_channel_list(&bench_channels);
-        printf("RW_LINK_CHANNEL freq_hz=%" PRIu32 " bw_mhz=%u status=%d\n",
-               channel->centre_freq_hz, channel->bw_mhz, status);
+        printf("RW_LINK_CHANNEL freq_hz=%" PRIu32 " bw_mhz=%u entries=%u status=%d\n",
+               channel->centre_freq_hz, channel->bw_mhz,
+               bench_channels.num_channels, status);
         return status == MMWLAN_SUCCESS;
     }
     return false;
@@ -188,9 +211,9 @@ bool validation_report_operating_channel(void)
     if (!validation_link_ready()) return false;
 #endif
     if (mmwlan_get_vif_channel_info(vif, &info) != MMWLAN_SUCCESS) return false;
-    /* The selected regulatory list contains one operating channel. Require
-     * the reported VIF identity to match it before claiming its width. */
-    if (bench_channels.num_channels != 1 ||
+    /* Entry zero is the selected operating channel; later entries are its
+     * primary/subchannels needed by the SDK for 4/8 MHz operation. */
+    if (bench_channels.num_channels == 0 ||
         info.op_class != bench_channels.channels[0].s1g_operating_class ||
         info.s1g_chan_num != bench_channels.channels[0].s1g_chan_num) return false;
     const struct mmwlan_s1g_channel *channel = &bench_channels.channels[0];
