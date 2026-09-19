@@ -2,7 +2,8 @@
 
 ESP-IDF **v5.4.4**, `morsemicro/halow` **2.11.2-esp32-2**. Based on the pinned
 official `softap` / `sta_connect` examples and Porting Assistant SPI transport.
-This project uses HaLow only; it does not initialize ESP32 internal 2.4 GHz Wi-Fi.
+This project uses only the SPI-connected MM6108 for wireless communication.
+It does not initialize ESP32 internal 2.4 GHz Wi-Fi or use a 2.4/5 GHz WLAN link.
 
 ## Default: no RF transmission
 
@@ -17,6 +18,10 @@ This project uses HaLow only; it does not initialize ESP32 internal 2.4 GHz Wi-F
 Preflight never calls `mmhalow_init`, `mmwlan_boot`, scanning, association, or UDP.
 BUSY/WAKE are unwired on the standard WM6180; `HALOW_PS_MODE` must stay disabled.
 The driver disables chip power save after radio boot in an RF-enabled build.
+The board adapter additionally vetoes transport sleep: this board has WAKE pulled
+high and no BUSY wake interrupt. Returning an always-busy indication keeps SPI RX
+interrupts enabled; it is not a measurement of the physical BUSY pin. This adapter
+is scoped to the RF-enabled experiment and the pinned SDK's no-power-save shim.
 
 ## Build and run preflight (PowerShell)
 
@@ -86,10 +91,11 @@ Resetting an RF-enabled build starts another test automatically.
 
 ## Current validation status
 
-See the [antenna test record](../../../docs/bringup/halow-link-antenna-test-2026-09-08.md).
-Both radios booted, but the STA timed out without association; no UDP round trip
-has succeeded yet. The final source adds explicit TX VIF selection, single-channel
-scanning and LED indicators. Both RF roles build successfully, but these final
-changes have **not been flashed or verified on hardware**. The experiment is
-separate from production firmware. Preflight success is recorded
+The September 19 retest established HaLow association and UDP echo after correcting
+channel setup ordering, vetoing transport sleep on the unwired-BUSY board, and
+providing the lwIP transmit-wrap callback alongside explicit TX VIF selection.
+See the [retest record](../../../docs/bringup/halow-link-retest-2026-09-19.md) for
+the tested device pairs, results and remaining limits. Earlier failed RF attempts
+remain in the [September 8 record](../../../docs/bringup/halow-link-antenna-test-2026-09-08.md).
+The experiment is separate from production firmware. Preflight success is recorded
 [separately](../../../docs/bringup/halow-link-preflight-2026-09-08.md).
