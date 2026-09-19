@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import statistics
 from pathlib import Path
 
@@ -34,6 +35,22 @@ def provenance(report: dict) -> dict:
         "sta_binary_sha256": devices.get("sta", {}).get("binary_sha256"),
         "host_commit": report.get("host_git", manifest.get("host_git", {})).get("commit"),
     }
+
+
+def same_value(saved, recomputed) -> bool:
+    """Compare assessed evidence recursively, with tolerance only for floats."""
+    if isinstance(recomputed, dict):
+        return isinstance(saved, dict) and saved.keys() == recomputed.keys() and all(
+            same_value(saved[key], value) for key, value in recomputed.items())
+    if isinstance(recomputed, list):
+        return isinstance(saved, list) and len(saved) == len(recomputed) and all(
+            same_value(a, b) for a, b in zip(saved, recomputed))
+    if isinstance(recomputed, bool) or isinstance(saved, bool):
+        return type(saved) is type(recomputed) and saved == recomputed
+    if isinstance(recomputed, float):
+        return isinstance(saved, (int, float)) and math.isclose(
+            saved, recomputed, rel_tol=1e-9, abs_tol=1e-9)
+    return saved == recomputed
 
 
 def stage_summary(stage: dict) -> dict:
@@ -90,6 +107,15 @@ def summarize(case: dict) -> dict:
     confirmed = report.get("confirmed") or {}
     failed = [s for s in stages if s["phase"] in {"ramp", "lower_probe", "refine"}
               and s["sustainable"] is False]
+    # A structurally valid overload stage is an observation even when it does
+    # not meet the sustained-rate gate. Failed/incomplete captures are not
+    # eligible for a published case maximum.
+    peak = max((s for s in report["stages"] if report.get("status") == "PASS"
+                and report.get("mode") == "full" and s.get("valid") is True
+                and s.get("phase") != "warmup"
+                and isinstance(s.get("active_payload_goodput_bps"), (int, float))
+                and math.isfinite(s["active_payload_goodput_bps"])),
+               key=lambda s: s["active_payload_goodput_bps"], default=None)
     return {"name": case["name"], "source": case["source"],
             "status": report.get("status"), "mode": report.get("mode"),
             "direction": report.get("direction"), "bandwidth_mhz": report.get("bandwidth_mhz"),
@@ -97,6 +123,10 @@ def summarize(case: dict) -> dict:
             "channel_opclass_verified_from_capture": False,
             "provenance": provenance(report),
             "confirmed_kbps": confirmed.get("target_kbps") if isinstance(confirmed, dict) else None,
+            "maximum_observed": ({"stage": peak["stage"], "phase": peak["phase"],
+                                  "payload_goodput_bps": peak["active_payload_goodput_bps"],
+                                  "body_goodput_bps": peak["active_body_goodput_bps"]}
+                                 if peak else None),
             "stages": stages, "confirmation_variability": variability,
             "first_failed_search_stage": failed[0]["stage"] if failed else None,
             "first_failure_is_capacity_bound": False}
@@ -112,8 +142,18 @@ def reconcile_events(case: dict, events_dir: Path) -> list[str]:
     except (OSError, ValueError) as exc:
         return [f"invalid events: {exc}"]
     errors = []
+    ready = {}
+    for role in ("ap", "sta"):
+        rows = [e for e in events if e.get("kind") == "firmware" and
+                e.get("role") == role and e.get("marker") == "RW_TPUT_READY"]
+        if rows:
+            ready[role] = rows[-1].get("fields", {}).get("ip")
+    seen_stages = set()
     for saved in case["report"]["stages"]:
         stage = saved.get("stage")
+        if stage in seen_stages:
+            errors.append(f"stage {stage}: duplicate saved stage")
+        seen_stages.add(stage)
         hosts = [e for e in events if e.get("kind") == "host_stage" and e.get("stage") == stage]
         if len(hosts) != 1:
             errors.append(f"stage {stage}: expected one host_stage, got {len(hosts)}")
@@ -125,15 +165,10 @@ def reconcile_events(case: dict, events_dir: Path) -> list[str]:
                 errors.append(f"stage {stage}: saved {key} differs from host_stage")
         recalculated = halow_throughput.assess_stage(
             events, stage=stage, sender=host["sender"], receiver=host["receiver"],
-            rate_kbps=host["rate_kbps"], requested_s=host["duration_s"], phase=host["phase"])
-        for key in ("valid", "sustainable", "active_delivery", "final_delivery",
-                    "actual_tx_bps", "active_body_goodput_bps", "rate_following"):
-            a, b = saved.get(key), recalculated.get(key)
-            if isinstance(a, (int, float)) and not isinstance(a, bool) and isinstance(b, (int, float)):
-                matched = abs(a - b) <= max(1e-9, abs(b) * 1e-9)
-            else:
-                matched = a == b
-            if not matched:
+            rate_kbps=host["rate_kbps"], requested_s=host["duration_s"], phase=host["phase"],
+            sender_ip=ready.get(host["sender"]), receiver_ip=ready.get(host["receiver"]))
+        for key, value in recalculated.items():
+            if key not in saved or not same_value(saved[key], value):
                 errors.append(f"stage {stage}: saved {key} differs from events")
     return errors
 

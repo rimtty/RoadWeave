@@ -1,4 +1,6 @@
 import sys
+import copy
+import json
 import unittest
 from pathlib import Path
 
@@ -7,6 +9,34 @@ import halow_throughput_analyze as analysis
 
 
 class AnalyzeTests(unittest.TestCase):
+    def test_published_case_reconciles_and_detects_counter_tampering(self):
+        repo = Path(__file__).resolve().parents[2]
+        events = repo / "docs/bringup/logs/2026-09-19-throughput"
+        metrics = json.loads((events / "metrics.json").read_text(encoding="utf-8"))
+        row = next(c for c in metrics["cases"] if c["case"] == "final-2mhz-sta-to-ap")
+        case = {"name": row["case"], "report": row}
+        self.assertEqual(analysis.reconcile_events(case, events), [])
+        changed = copy.deepcopy(case)
+        changed["report"]["stages"][0]["tx"]["send_fail"] += 1
+        self.assertTrue(any("saved tx differs" in error for error in
+                            analysis.reconcile_events(changed, events)))
+
+    def test_max_observed_is_separate_from_confirmed_and_excludes_failed(self):
+        case = {"name": "example", "source": "report.json", "report": {
+            "status": "PASS", "mode": "full", "stages": [
+                {"stage": 1, "phase": "warmup", "valid": True,
+                 "active_payload_goodput_bps": 9_000_000, "active_body_goodput_bps": 8_000_000},
+                {"stage": 2, "phase": "ramp", "valid": False,
+                 "active_payload_goodput_bps": 8_000_000, "active_body_goodput_bps": 7_000_000},
+                {"stage": 3, "phase": "saturation", "valid": True,
+                 "active_payload_goodput_bps": 3_100_000, "active_body_goodput_bps": 3_050_000}],
+            "confirmed": {"target_kbps": 2500}}}
+        result = analysis.summarize(case)
+        self.assertEqual(result["confirmed_kbps"], 2500)
+        self.assertEqual(result["maximum_observed"]["stage"], 3)
+        case["report"]["status"] = "FAIL"
+        self.assertIsNone(analysis.summarize(case)["maximum_observed"])
+
     def test_stage_flags_distinguish_sender_and_receiver(self):
         base = {"stage": 2, "phase": "ramp", "valid": True, "sustainable": False,
                 "target_kbps": 128, "actual_tx_bps": 100_000,
