@@ -98,6 +98,8 @@ software restart時の不具合を修正し、AP/STA再起動各3回・APサー�
 ESP32内蔵Wi-Fiは使用していません。8時間運転、実電源断50回、電源計測、現物受入の未確認分が残り、P0-A全体は未完了です。
 [当日実証結果](docs/bringup/p0-a-validation-report-2026-09-19.md)、[残課題](docs/bringup/p0-a-open-items-2026-09-19.md)、[計測器・電源治具の準備](docs/bringup/p0-a-equipment-followups-2026-09-19.md)を参照してください。
 
+最大転送速度は、固定低負荷echoと分けて[UDP stream実測](docs/bringup/p0-a-throughput-report-2026-09-19.md)に記録しています。受信側goodput、損失、送信負荷への追随、60秒3反復の合格値と飽和時の観測値を区別しています。
+
 以下は2026-09-06時点の履歴:
 
 - XIAO ESP32S3 1 台目: Gate 1（USB/flash/PSRAM smoke）PASS。残り 2 台と Wio-WM6180 x3 は到着待ち。

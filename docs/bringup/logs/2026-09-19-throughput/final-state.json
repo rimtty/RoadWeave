@@ -1,0 +1,516 @@
+{
+  "flash_evidence": [
+    {
+      "role": "ap",
+      "file": "restore-aa-ap-flash.log",
+      "raw_sha256": "4a4e59cf37b846bef19d1920b5da734f4e07e7d2d72914c2a255cd149c7c347e",
+      "binary_sha256": "ab8ab6f0d7d94fe2f56eeb08506fb88f76cf08b676bb4fb9e692d48b6e96d21a",
+      "mac": "44:B1:76:B0:57:20",
+      "esptool_hash_verified": true
+    },
+    {
+      "role": "sta",
+      "file": "restore-aa-sta-flash.log",
+      "raw_sha256": "0c2d4eca8df82d8b274e80773baa4459a1d90e971783bf2f283fbcb0c45424ff",
+      "binary_sha256": "624bd0e5bffbc84e5d495b993f37bd4cf2cdd889cf56db513c9b0e192094b063",
+      "mac": "44:B1:76:B0:57:1C",
+      "esptool_hash_verified": true
+    }
+  ],
+  "schema_version": 1,
+  "case": "restore-aa-three-node",
+  "status": "PASS",
+  "analysis_commit": "ed2931060e4eae2245cbc614c94149bd21edd868",
+  "firmware_source": "aa58241f266168e28041148cff8da38109ce2b69",
+  "throughput_measurement": false,
+  "radio_off_is_current_state_not_persistent_rf_disable": true,
+  "next_reset_behavior": "normal RF-enabled 1 MHz DHCP bench starts; configured finite run 600 s",
+  "roles": {
+    "ap": {
+      "port": "COM4",
+      "mac": "44:B1:76:B0:57:20",
+      "binary_sha256": "ab8ab6f0d7d94fe2f56eeb08506fb88f76cf08b676bb4fb9e692d48b6e96d21a",
+      "firmware_source": "aa58241f266168e28041148cff8da38109ce2b69",
+      "binary_label": "dhcp-ap.bin",
+      "radio_state": "OFF",
+      "restoration_action": "reflashed app",
+      "stop_evidence": [
+        {
+          "kind": "firmware",
+          "role": "ap",
+          "iso_time": "2026-09-19T12:31:07.553+00:00",
+          "monotonic_s": 20465.453,
+          "marker": "RW_LINK_CMD_ACK",
+          "fields": {
+            "command": "STOP"
+          }
+        },
+        {
+          "kind": "firmware",
+          "role": "ap",
+          "iso_time": "2026-09-19T12:31:07.553+00:00",
+          "monotonic_s": 20465.453,
+          "marker": "RW_LINK_RUN_END",
+          "fields": {
+            "role": "AP",
+            "run_id": "452037b1",
+            "execution_ok": "1",
+            "quality_gate": "host"
+          }
+        },
+        {
+          "kind": "firmware",
+          "role": "ap",
+          "iso_time": "2026-09-19T12:31:07.803+00:00",
+          "monotonic_s": 20465.703,
+          "marker": "RW_LINK_RADIO_SHUTDOWN",
+          "fields": {}
+        },
+        {
+          "kind": "firmware",
+          "role": "ap",
+          "iso_time": "2026-09-19T12:31:07.803+00:00",
+          "monotonic_s": 20465.703,
+          "marker": "RW_LINK_RADIO_RESULT",
+          "fields": {
+            "value": "PASS"
+          }
+        },
+        {
+          "kind": "firmware",
+          "role": "ap",
+          "iso_time": "2026-09-19T12:31:07.803+00:00",
+          "monotonic_s": 20465.703,
+          "marker": "RW_LINK_DONE",
+          "fields": {}
+        }
+      ]
+    },
+    "sta": {
+      "port": "COM5",
+      "mac": "44:B1:76:B0:57:1C",
+      "binary_sha256": "624bd0e5bffbc84e5d495b993f37bd4cf2cdd889cf56db513c9b0e192094b063",
+      "firmware_source": "aa58241f266168e28041148cff8da38109ce2b69",
+      "binary_label": "dhcp-sta.bin",
+      "radio_state": "OFF",
+      "restoration_action": "reflashed app",
+      "stop_evidence": [
+        {
+          "kind": "firmware",
+          "role": "sta",
+          "iso_time": "2026-09-19T12:31:07.451+00:00",
+          "monotonic_s": 20465.359,
+          "marker": "RW_LINK_CMD_ACK",
+          "fields": {
+            "command": "STOP"
+          }
+        },
+        {
+          "kind": "firmware",
+          "role": "sta",
+          "iso_time": "2026-09-19T12:31:07.451+00:00",
+          "monotonic_s": 20465.359,
+          "marker": "RW_LINK_RUN_END",
+          "fields": {
+            "role": "STA",
+            "run_id": "5a941162",
+            "execution_ok": "1",
+            "quality_gate": "host"
+          }
+        },
+        {
+          "kind": "firmware",
+          "role": "sta",
+          "iso_time": "2026-09-19T12:31:07.502+00:00",
+          "monotonic_s": 20465.406,
+          "marker": "RW_LINK_RADIO_SHUTDOWN",
+          "fields": {}
+        },
+        {
+          "kind": "firmware",
+          "role": "sta",
+          "iso_time": "2026-09-19T12:31:07.502+00:00",
+          "monotonic_s": 20465.406,
+          "marker": "RW_LINK_RADIO_RESULT",
+          "fields": {
+            "value": "PASS"
+          }
+        },
+        {
+          "kind": "firmware",
+          "role": "sta",
+          "iso_time": "2026-09-19T12:31:07.502+00:00",
+          "monotonic_s": 20465.406,
+          "marker": "RW_LINK_DONE",
+          "fields": {}
+        }
+      ]
+    },
+    "sta2": {
+      "port": "COM6",
+      "mac": "44:B1:76:AE:C4:90",
+      "binary_sha256": "b4a82989fdd9f0a8e6ce715862f7cbbd37dcaf02a3baf1656c2bf9ca1d7d2ade",
+      "firmware_source": "aa58241f266168e28041148cff8da38109ce2b69",
+      "binary_label": "dhcp-sta2.bin",
+      "radio_state": "OFF",
+      "restoration_action": "existing app retained",
+      "stop_evidence": [
+        {
+          "kind": "firmware",
+          "role": "sta2",
+          "iso_time": "2026-09-19T12:31:07.400+00:00",
+          "monotonic_s": 20465.296,
+          "marker": "RW_LINK_CMD_ACK",
+          "fields": {
+            "command": "STOP"
+          }
+        },
+        {
+          "kind": "firmware",
+          "role": "sta2",
+          "iso_time": "2026-09-19T12:31:07.401+00:00",
+          "monotonic_s": 20465.296,
+          "marker": "RW_LINK_RUN_END",
+          "fields": {
+            "role": "STA",
+            "run_id": "fafca456",
+            "execution_ok": "1",
+            "quality_gate": "host"
+          }
+        },
+        {
+          "kind": "firmware",
+          "role": "sta2",
+          "iso_time": "2026-09-19T12:31:07.502+00:00",
+          "monotonic_s": 20465.406,
+          "marker": "RW_LINK_RADIO_SHUTDOWN",
+          "fields": {}
+        },
+        {
+          "kind": "firmware",
+          "role": "sta2",
+          "iso_time": "2026-09-19T12:31:07.502+00:00",
+          "monotonic_s": 20465.406,
+          "marker": "RW_LINK_RADIO_RESULT",
+          "fields": {
+            "value": "PASS"
+          }
+        },
+        {
+          "kind": "firmware",
+          "role": "sta2",
+          "iso_time": "2026-09-19T12:31:07.502+00:00",
+          "monotonic_s": 20465.406,
+          "marker": "RW_LINK_DONE",
+          "fields": {}
+        }
+      ]
+    }
+  },
+  "post_warmup_by_role": {
+    "sta": {
+      "sent": 588.0,
+      "received": 588.0,
+      "warmup_elapsed_ms": 10046.0,
+      "duration_s": 147.07800000000134
+    },
+    "sta2": {
+      "sent": 587.0,
+      "received": 587.0,
+      "warmup_elapsed_ms": 10033.0,
+      "duration_s": 146.85899999999674
+    }
+  },
+  "simultaneous_post_warmup_s": 146.85899999999674,
+  "independent_report": {
+    "status": "PASS",
+    "errors": [],
+    "roles": {
+      "ap": {
+        "run_start": {
+          "role": "AP",
+          "id": "0",
+          "ip": "192.168.50.1",
+          "run_id": "452037b1",
+          "duration_s": "600",
+          "payload_bytes": "256",
+          "interval_ms": "NA",
+          "max_stas": "2"
+        },
+        "run_count": 1,
+        "summary": {
+          "role": "AP",
+          "elapsed_ms": "160589",
+          "echo_id1": "616",
+          "echo_id2": "615",
+          "invalid": "0",
+          "send_fail": "0",
+          "useful_bps": "15698",
+          "heap_free": "8635488",
+          "heap_min": "8623884",
+          "snr_db": "NA",
+          "rc_sent_start": "NA",
+          "rc_success_start": "NA",
+          "rc_sent_end": "NA",
+          "rc_success_end": "NA"
+        },
+        "sample_count": 15,
+        "echo_matches_logged": 0,
+        "duplicates_logged": 0,
+        "recovery_windows_ms": [],
+        "heap_free_samples": [
+          8627380.0,
+          8627380.0,
+          8627380.0,
+          8627380.0,
+          8627380.0,
+          8627824.0,
+          8627380.0,
+          8627380.0,
+          8627380.0,
+          8627380.0,
+          8627380.0,
+          8627380.0,
+          8627380.0,
+          8627380.0,
+          8627380.0
+        ],
+        "boots": [
+          {
+            "boot_id": "1c80a1c9",
+            "reset_reason": "11"
+          }
+        ],
+        "cold_boot_counted": 0,
+        "peer_exact_matches_in_final_ap_run": {
+          "sta": 616,
+          "sta2": 615
+        }
+      },
+      "sta": {
+        "run_start": {
+          "role": "STA",
+          "id": "1",
+          "ip": "DHCP",
+          "run_id": "5a941162",
+          "duration_s": "600",
+          "max_probes": "0",
+          "payload_bytes": "256",
+          "interval_ms": "250"
+        },
+        "run_count": 1,
+        "summary": {
+          "role": "STA",
+          "id": "1",
+          "elapsed_ms": "157091",
+          "planned": "629",
+          "sent": "616",
+          "received": "616",
+          "lost": "0",
+          "send_fail": "0",
+          "skipped": "13",
+          "duplicates": "0",
+          "late": "0",
+          "invalid": "0",
+          "reconnects": "0",
+          "rtt_p50_us": "16000",
+          "rtt_p95_us": "31000",
+          "rtt_p99_us": "40000",
+          "rtt_max_us": "62258",
+          "offered_bps": "8030",
+          "useful_bps": "8030",
+          "heap_free": "8643060",
+          "heap_min": "8639980",
+          "rssi_dbm": "-40",
+          "snr_db": "NA",
+          "rc_sent_start": "NA",
+          "rc_success_start": "NA",
+          "rc_sent_end": "803",
+          "rc_success_end": "628"
+        },
+        "sample_count": 15,
+        "echo_matches_logged": 616,
+        "duplicates_logged": 0,
+        "recovery_windows_ms": [],
+        "heap_free_samples": [
+          8642588.0,
+          8642588.0,
+          8642144.0,
+          8642144.0,
+          8641700.0,
+          8642144.0,
+          8641700.0,
+          8641256.0,
+          8643032.0,
+          8642588.0,
+          8642144.0,
+          8641700.0,
+          8641728.0,
+          8642616.0,
+          8642616.0
+        ],
+        "boots": [
+          {
+            "boot_id": "9d4a1ab4",
+            "reset_reason": "11"
+          }
+        ],
+        "cold_boot_counted": 0,
+        "scan_target": {
+          "freq_hz": "903500000",
+          "bw_mhz": "1",
+          "op_bw_mhz": "1",
+          "rssi_dbm": "-41",
+          "noise_dbm": "-66",
+          "scan_snr_db": "25",
+          "scan_snr_status": "ok"
+        },
+        "ip_mode": "dhcp",
+        "dhcp_epoch_boot_monotonic_s": 20307.156,
+        "dhcp_lease": {
+          "role": "STA",
+          "ip": "192.168.50.2",
+          "gw": "192.168.50.1",
+          "mask": "255.255.255.0",
+          "acquire_ms": "2288",
+          "t_ms": "5511"
+        },
+        "udp_bind": {
+          "role": "STA",
+          "ip": "192.168.50.2",
+          "elapsed_ms": "3258"
+        },
+        "effective_ip": "192.168.50.2"
+      },
+      "sta2": {
+        "run_start": {
+          "role": "STA",
+          "id": "2",
+          "ip": "DHCP",
+          "run_id": "fafca456",
+          "duration_s": "600",
+          "max_probes": "0",
+          "payload_bytes": "256",
+          "interval_ms": "250"
+        },
+        "run_count": 1,
+        "summary": {
+          "role": "STA",
+          "id": "2",
+          "elapsed_ms": "157003",
+          "planned": "628",
+          "sent": "615",
+          "received": "615",
+          "lost": "0",
+          "send_fail": "0",
+          "skipped": "13",
+          "duplicates": "0",
+          "late": "0",
+          "invalid": "0",
+          "reconnects": "0",
+          "rtt_p50_us": "21000",
+          "rtt_p95_us": "39000",
+          "rtt_p99_us": "48000",
+          "rtt_max_us": "59968",
+          "offered_bps": "8022",
+          "useful_bps": "8022",
+          "heap_free": "8641736",
+          "heap_min": "8639988",
+          "rssi_dbm": "-29",
+          "snr_db": "NA",
+          "rc_sent_start": "NA",
+          "rc_success_start": "NA",
+          "rc_sent_end": "908",
+          "rc_success_end": "624"
+        },
+        "sample_count": 15,
+        "echo_matches_logged": 615,
+        "duplicates_logged": 0,
+        "recovery_windows_ms": [],
+        "heap_free_samples": [
+          8642596.0,
+          8643040.0,
+          8642596.0,
+          8642596.0,
+          8642152.0,
+          8642152.0,
+          8642152.0,
+          8641708.0,
+          8641708.0,
+          8643040.0,
+          8642596.0,
+          8642596.0,
+          8642624.0,
+          8642624.0,
+          8642180.0
+        ],
+        "boots": [
+          {
+            "boot_id": "158b7c41",
+            "reset_reason": "11"
+          }
+        ],
+        "cold_boot_counted": 0,
+        "scan_target": {
+          "freq_hz": "903500000",
+          "bw_mhz": "1",
+          "op_bw_mhz": "1",
+          "rssi_dbm": "-28",
+          "noise_dbm": "-76",
+          "scan_snr_db": "48",
+          "scan_snr_status": "ok"
+        },
+        "ip_mode": "dhcp",
+        "dhcp_epoch_boot_monotonic_s": 20307.156,
+        "dhcp_lease": {
+          "role": "STA",
+          "ip": "192.168.50.3",
+          "gw": "192.168.50.1",
+          "mask": "255.255.255.0",
+          "acquire_ms": "2334",
+          "t_ms": "5587"
+        },
+        "udp_bind": {
+          "role": "STA",
+          "ip": "192.168.50.3",
+          "elapsed_ms": "3259"
+        },
+        "effective_ip": "192.168.50.3"
+      }
+    },
+    "faults": [],
+    "event_count": 1358,
+    "ignored_prestart_events": 5,
+    "cold_boot_counted": 0,
+    "post_warmup_by_role": {
+      "sta": {
+        "sent": 588.0,
+        "received": 588.0,
+        "warmup_elapsed_ms": 10046.0,
+        "duration_s": 147.07800000000134
+      },
+      "sta2": {
+        "sent": 587.0,
+        "received": 587.0,
+        "warmup_elapsed_ms": 10033.0,
+        "duration_s": 146.85899999999674
+      }
+    },
+    "simultaneous_post_warmup_s": 146.85899999999674,
+    "simultaneous_exact_echoes": {
+      "sta": 587,
+      "sta2": 587
+    }
+  },
+  "host_git": {
+    "commit": "ed2931060e4eae2245cbc614c94149bd21edd868",
+    "dirty": false
+  },
+  "raw_sha256": {
+    "ap-raw.log": "21be93ac72513cdfb2146878a7f9f40ea1e2b610bfe0155fb7c3832d1abb518c",
+    "events.jsonl": "830792ae3a25eb4203e543e37c6257914c2f9878bab564024912d11f2aa2f0ea",
+    "report.json": "ea96bf8d881b7a11e4e2fddabc01725d7148f08d2d5001c02be1a083530c9375",
+    "sta-raw.log": "d54a8dccdaf23b27896b9203b107fbbc8fd389164be2889bc60e3386afbba749",
+    "sta2-raw.log": "4308c5479e9ae242fd41cb8be28a6c19313e7e9961ae4da48c166d685d3754fb"
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "draft": false,
+  "policy": "known marker/field allowlist; error free text removed; published events LF; raw SHA256 in metrics",
+  "cases": [
+    {
+      "case": "final-1mhz-ap-to-sta",
+      "file": "final-1mhz-ap-to-sta.events.jsonl",
+      "sha256": "d5b62792ba07c41da5448c6873bba4d4c042405c173cc05a88509e7dda6ad767",
+      "stage_reanalysis_equal": true,
+      "stages": 9
+    },
+    {
+      "case": "final-1mhz-sta-to-ap",
+      "file": "final-1mhz-sta-to-ap.events.jsonl",
+      "sha256": "b6f799f67489800b2a5d01f39e7eb8ecf04c7593cffe0ea99504acc0cc7589a3",
+      "stage_reanalysis_equal": true,
+      "stages": 12
+    },
+    {
+      "case": "final-2mhz-ap-to-sta",
+      "file": "final-2mhz-ap-to-sta.events.jsonl",
+      "sha256": "0a1078f62f636c8ac1790a24e8d1b92f68b8927cdaebe6b6c1f41ae7dca0d06b",
+      "stage_reanalysis_equal": true,
+      "stages": 13
+    },
+    {
+      "case": "final-2mhz-sta-to-ap",
+      "file": "final-2mhz-sta-to-ap.events.jsonl",
+      "sha256": "e33007e2081cdef11a02bc2ddfd4b886428daa737adbc42b63cf11319e5abc71",
+      "stage_reanalysis_equal": true,
+      "stages": 13
+    },
+    {
+      "case": "full-1mhz-sta-to-ap",
+      "file": "full-1mhz-sta-to-ap.events.jsonl",
+      "sha256": "afc0a60473f7704284aae4ce2ddfa08eded853856b9b44ce212878c653237d5d",
+      "stage_reanalysis_equal": true,
+      "stages": 9
+    },
+    {
+      "case": "smoke-1mhz-sta-to-ap",
+      "file": "smoke-1mhz-sta-to-ap.events.jsonl",
+      "sha256": "6c1af435db87e5a58ef1662de682f5424e4b5a03065786eb53c167878eb3a092",
+      "stage_reanalysis_equal": true,
+      "stages": 0
+    },
+    {
+      "case": "smoke-b3964b5-1mhz-sta-to-ap",
+      "file": "smoke-b3964b5-1mhz-sta-to-ap.events.jsonl",
+      "sha256": "93b096420a7e642117c9330805d9552409d6e0d4845e5146cbbc9469f154345c",
+      "stage_reanalysis_equal": true,
+      "stages": 5
+    },
+    {
+      "case": "supplemental-1mhz-ap-to-sta",
+      "file": "supplemental-1mhz-ap-to-sta.events.jsonl",
+      "sha256": "9aaf1461ced2c6665cdfd44fe589fd278e20e682fafd4b490f58e34cefa31623",
+      "stage_reanalysis_equal": true,
+      "stages": 10
+    }
+  ],
+  "restoration": {
+    "file": "restore-aa-three-node.events.jsonl",
+    "sha256": "e951aae4d86acdd53f64294f52c553d90c410671d8f4355814c957d07c6aba07",
+    "analysis_equal": true,
+    "status": "PASS"
+  }
+}
