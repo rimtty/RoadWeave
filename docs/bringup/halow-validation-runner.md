@@ -30,9 +30,12 @@ Three-node baseline example (STA ID 1 on COM5, STA ID 2 on COM6):
 Both station reports need at least 200 successful sends and 99% exact echoes
 after the first 10 s, plus a common 120 s measurement window with at least
 200 exact echoes from each station. The AP's `echo_id1` and `echo_id2` counts
-must cover the corresponding station replies. For DHCP builds the analyzer
+must cover every exact reply during the AP's final run, including replies
+before a station restart. For DHCP builds the analyzer
 uses each station's lease and UDP bind address, checks they differ, and checks
-the AP's peer ID/address mapping. The report identifies static or DHCP mode.
+the AP's peer ID/address mapping. DHCP evidence must come from the current
+boot; software resets require fresh lease/bind evidence. The report identifies
+static or DHCP mode.
 
 ```powershell
 & D:/Espressif/tools/python_env/idf5.4_py3.12_env/Scripts/python.exe tools/halow_validation_run.py `
@@ -88,6 +91,9 @@ by role, boot index and raw line; the former is a propagated transport error,
 while the latter is skipped during TLV parsing. Review their local context
 before classifying either. The optional public log includes allowlisted
 `RW_LINK_*` fields only and removes PSK/SSID. Check it before committing.
+Scan-time SNR is retained only when firmware reports valid RSSI and noise.
+`NA` stays unknown, and negative SNR is preserved. The UDP summary's
+`snr_db=NA` is not replaced with the scan-time value.
 
 For offline reanalysis of an event file:
 

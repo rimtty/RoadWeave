@@ -39,6 +39,7 @@ SAFE_FIELDS = {
     "snr_db", "max_probes", "max_stas", "phase",
     "rtt_hist_bin_us", "execution_ok", "quality_gate",
     "acquire_ms", "t_ms", "gw", "mask", "mac", "start_err", "err",
+    "noise_dbm", "op_bw_mhz", "scan_snr_db", "scan_snr_status",
 }
 
 
@@ -170,12 +171,22 @@ def analyze(events: list[dict], expected_roles=None) -> dict:
             "cold_boot_counted": 0,
         }
         if role != "ap":
+            scan_epoch = boots[-1].get("monotonic_s", -1) if boots else -1
+            scans = [e.get("fields", {}) for e in row if e.get("marker") == "RW_LINK_SCAN_TARGET" and
+                     e.get("monotonic_s", -1) >= scan_epoch]
+            roles[role]["scan_target"] = scans[-1] if scans else None
             configured_ip = (starts[-1].get("fields", {}) if starts else {}).get("ip")
-            leases = [e.get("fields", {}) for e in row if e.get("marker") == "RW_LINK_DHCP_LEASE"]
-            binds = [e.get("fields", {}) for e in row if e.get("marker") == "RW_LINK_UDP_BIND"]
-            effective_ip = (binds[-1].get("ip") if binds else None) or (leases[-1].get("ip") if leases else None)
             if configured_ip and configured_ip.upper() == "DHCP":
                 roles[role]["ip_mode"] = "dhcp"
+                epoch_start = boots[-1].get("monotonic_s", -1) if boots else None
+                roles[role]["dhcp_epoch_boot_monotonic_s"] = epoch_start
+                if epoch_start is None:
+                    errors.append(f"{role}: DHCP boot marker missing")
+                leases = [e.get("fields", {}) for e in row if e.get("marker") == "RW_LINK_DHCP_LEASE" and
+                          epoch_start is not None and e.get("monotonic_s", -1) >= epoch_start]
+                binds = [e.get("fields", {}) for e in row if e.get("marker") == "RW_LINK_UDP_BIND" and
+                         epoch_start is not None and e.get("monotonic_s", -1) >= max(epoch_start, starts[-1].get("monotonic_s", -1))]
+                effective_ip = (binds[-1].get("ip") if binds else None) or (leases[-1].get("ip") if leases else None)
                 roles[role]["dhcp_lease"] = leases[-1] if leases else None
                 roles[role]["udp_bind"] = binds[-1] if binds else None
                 if not leases or not binds or not effective_ip or effective_ip.upper() == "DHCP":
@@ -183,11 +194,12 @@ def analyze(events: list[dict], expected_roles=None) -> dict:
                 elif leases[-1].get("ip") != binds[-1].get("ip"):
                     errors.append(f"{role}: DHCP lease and UDP bind addresses differ")
                 if not any(e.get("marker") == "RW_LINK_DHCP_CLIENT" and
-                           e.get("fields", {}).get("value") == "ENABLED" for e in row):
+                           e.get("fields", {}).get("value") == "ENABLED" and
+                           epoch_start is not None and e.get("monotonic_s", -1) >= epoch_start for e in row):
                     errors.append(f"{role}: DHCP client start was not recorded")
             else:
                 roles[role]["ip_mode"] = "static"
-                effective_ip = effective_ip or configured_ip
+                effective_ip = configured_ip
             roles[role]["effective_ip"] = effective_ip
         final_start = starts[-1].get("monotonic_s", -1) if starts else -1
         final_events = [e for e in row if e.get("monotonic_s", -1) >= final_start]
@@ -218,13 +230,20 @@ def analyze(events: list[dict], expected_roles=None) -> dict:
         if expected_id and start.get("id") != expected_id:
             errors.append(f"{station}: firmware ID does not match {port}")
     if any(roles.get(station, {}).get("ip_mode") == "dhcp" for station in station_roles(expected_roles)):
+        ap_boots = [e for e in events if e.get("role") == "ap" and e.get("marker") == "RW_LINK_BOOT"]
+        ap_epoch = ap_boots[-1].get("monotonic_s", -1) if ap_boots else None
+        if ap_epoch is None:
+            errors.append("DHCP AP boot marker missing")
         if not any(e.get("role") == "ap" and e.get("marker") == "RW_LINK_DHCP_SERVER" and
-                   e.get("fields", {}).get("value") == "STARTED" for e in events):
+                   e.get("fields", {}).get("value") == "STARTED" and ap_epoch is not None and
+                   e.get("monotonic_s", -1) >= ap_epoch for e in events):
             errors.append("DHCP server start was not recorded")
         peer_rows = [e.get("fields", {}) for e in events if e.get("role") == "ap" and
-                     e.get("marker") == "RW_LINK_AP_PEER"]
+                     e.get("marker") == "RW_LINK_AP_PEER" and ap_epoch is not None and
+                     e.get("monotonic_s", -1) >= ap_epoch]
         ap_leases = [e.get("fields", {}) for e in events if e.get("role") == "ap" and
-                     e.get("marker") == "RW_LINK_DHCP_LEASE"]
+                     e.get("marker") == "RW_LINK_DHCP_LEASE" and ap_epoch is not None and
+                     e.get("monotonic_s", -1) >= ap_epoch]
         for station in station_roles(expected_roles):
             if roles.get(station, {}).get("ip_mode") != "dhcp":
                 continue
@@ -249,14 +268,21 @@ def analyze(events: list[dict], expected_roles=None) -> dict:
         ip2 = roles.get("sta2", {}).get("effective_ip")
         if not ip1 or not ip2 or ip1 == ip2:
             errors.append("three-node: STA IPs are missing or identical")
-        if not any(f.get("role") == "ap" and f.get("action") == "software_reset"
-                   for f in events if f.get("kind") == "fault"):
-            ap_summary = roles.get("ap", {}).get("summary") or {}
-            for station, peer_id in (("sta", "1"), ("sta2", "2")):
-                echoed = number(ap_summary, f"echo_id{peer_id}")
-                matched = number(roles.get(station, {}).get("summary") or {}, "received")
-                if echoed is None or matched is None or echoed < matched:
-                    errors.append(f"three-node: AP echo_id{peer_id} does not cover {station} exact replies")
+        ap_summary = roles.get("ap", {}).get("summary") or {}
+        ap_starts = [e for e in events if e.get("role") == "ap" and e.get("marker") == "RW_LINK_RUN_START"]
+        ap_summaries = [e for e in events if e.get("role") == "ap" and e.get("marker") == "RW_LINK_SUMMARY"]
+        ap_scope_start = ap_starts[-1].get("monotonic_s", -1) if ap_starts else float("inf")
+        ap_scope_end = ap_summaries[-1].get("monotonic_s", -1) if ap_summaries else -1
+        peer_matches = {}
+        for station, peer_id in (("sta", "1"), ("sta2", "2")):
+            echoed = number(ap_summary, f"echo_id{peer_id}")
+            matched = sum(e.get("kind") == "firmware" and e.get("role") == station and
+                          e.get("marker") == "RW_LINK_ECHO_MATCH" and
+                          ap_scope_start <= e.get("monotonic_s", -1) <= ap_scope_end for e in events)
+            peer_matches[station] = matched
+            if echoed is None or echoed < matched:
+                errors.append(f"three-node: AP echo_id{peer_id} does not cover {station} exact replies")
+        roles["ap"]["peer_exact_matches_in_final_ap_run"] = peer_matches
     for fault in faults:
         role = fault.get("role")
         if fault.get("action") not in {"software_reset", "ap_off_10s"}:
@@ -277,6 +303,33 @@ def analyze(events: list[dict], expected_roles=None) -> dict:
                 errors.append(f"{role}: boot after software reset did not report software reset")
             if sum(e.get("marker") == "RW_LINK_BOOT" for e in after) != 1:
                 errors.append(f"{role}: expected exactly one boot after software reset")
+            if boot is not None:
+                boot_time = boot.get("monotonic_s", -1)
+                epoch_events = [e for e in events if e.get("kind") == "firmware" and
+                                boot_time <= e.get("monotonic_s", -1) < next_fault_time]
+                if role != "ap" and roles.get(role, {}).get("ip_mode") == "dhcp":
+                    own = [e for e in epoch_events if e.get("role") == role]
+                    leases = [e.get("fields", {}) for e in own if e.get("marker") == "RW_LINK_DHCP_LEASE"]
+                    binds = [e.get("fields", {}) for e in own if e.get("marker") == "RW_LINK_UDP_BIND"]
+                    client = any(e.get("marker") == "RW_LINK_DHCP_CLIENT" and
+                                 e.get("fields", {}).get("value") == "ENABLED" for e in own)
+                    if not client or not leases or not binds or leases[-1].get("ip") != binds[-1].get("ip"):
+                        errors.append(f"{role}: DHCP lease/bind not renewed after software reset")
+                if role == "ap" and any(roles.get(station, {}).get("ip_mode") == "dhcp"
+                                        for station in station_roles(expected_roles)):
+                    ap_epoch_events = [e for e in epoch_events if e.get("role") == "ap"]
+                    if not any(e.get("marker") == "RW_LINK_DHCP_SERVER" and
+                               e.get("fields", {}).get("value") == "STARTED" for e in ap_epoch_events):
+                        errors.append("ap: DHCP server did not restart after software reset")
+                    ap_leases = [e.get("fields", {}) for e in ap_epoch_events if e.get("marker") == "RW_LINK_DHCP_LEASE"]
+                    for station in station_roles(expected_roles):
+                        peer_id = (roles.get(station, {}).get("run_start") or {}).get("id")
+                        peers = [e.get("fields", {}) for e in ap_epoch_events if e.get("marker") == "RW_LINK_AP_PEER" and
+                                 e.get("fields", {}).get("id") == peer_id]
+                        if not peers or not any(lease.get("ip") == peers[-1].get("ip") and
+                                                lease.get("mac", "").lower() == peers[-1].get("mac", "").lower()
+                                                for lease in ap_leases):
+                            errors.append(f"ap: no renewed DHCP lease/peer mapping for {station} after reset")
         elif any(e.get("marker") == "RW_LINK_BOOT" for e in after):
             errors.append(f"{role}: AP service outage unexpectedly rebooted")
         # The STA reports link recovery even when the AP was the fault target.
@@ -456,6 +509,11 @@ def markdown(report: dict) -> str:
             lines.extend(["", f"{role} after 10s warmup: {post.get('sent')} sent, "
                           f"{post.get('received')} exact replies over {post.get('duration_s', '—')}s."])
         if sta:
+            scan = role_report.get("scan_target") or {}
+            if scan:
+                lines.extend(["", f"{role} scan RSSI/noise/SNR: {scan.get('rssi_dbm', '—')}/"
+                              f"{scan.get('noise_dbm', '—')}/{scan.get('scan_snr_db', 'NA')} dB; "
+                              f"SNR status: {scan.get('scan_snr_status', '—')} (scan-time only)."])
             lines.extend(["", f"{role} RTT p50/p95/max: {sta.get('rtt_p50_us', '—')}/"
                           f"{sta.get('rtt_p95_us', '—')}/{sta.get('rtt_max_us', '—')} µs; "
                           f"offered/useful: {sta.get('offered_bps', '—')}/"

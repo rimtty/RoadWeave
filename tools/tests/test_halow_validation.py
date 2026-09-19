@@ -145,6 +145,13 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(parsed["fields"]["elapsed_ms"], "10000")
         self.assertEqual(parsed["fields"]["rc_sent_start"], "NA")
 
+    def test_scan_snr_preserves_negative_and_invalid_values(self):
+        scan = v.parse_line("RW_LINK_SCAN_TARGET freq_hz=903500000 bw_mhz=1 rssi_dbm=-39 op_bw_mhz=1 noise_dbm=-35 scan_snr_db=-4 scan_snr_status=ok")
+        self.assertEqual(scan["fields"]["scan_snr_db"], "-4")
+        invalid = v.parse_line("RW_LINK_SCAN_TARGET rssi_dbm=-39 noise_dbm=0 scan_snr_db=NA scan_snr_status=out_of_range")
+        self.assertEqual(invalid["fields"]["scan_snr_db"], "NA")
+        self.assertEqual(invalid["fields"]["scan_snr_status"], "out_of_range")
+
     def test_sta_reset_requires_fresh_boot_not_recovery_marker(self):
         events = good_events()
         events += [{"kind": "fault", "role": "sta", "action": "software_reset",
@@ -201,13 +208,15 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(v.parse_lines("RW_LINK_DHCP_CLIENT=ENABLED status=1")[-1]["fields"],
                          {"value": "ENABLED", "status": "1"})
         events = three_events()
+        events.append(fw("ap", "RW_LINK_BOOT", -.5, reset_reason=11))
         events.append(fw("ap", "RW_LINK_DHCP_SERVER", 0.5, value="STARTED"))
         for role, peer_id, ip in (("sta", 1, "192.168.50.22"), ("sta2", 2, "192.168.50.23")):
+            events.append(fw(role, "RW_LINK_BOOT", -.5, reset_reason=11))
             start = next(e for e in events if e["role"] == role and e.get("marker") == "RW_LINK_RUN_START")
             start["fields"]["ip"] = "DHCP"
             events += [fw(role, "RW_LINK_DHCP_CLIENT", 1.0, value="ENABLED", status=1),
                        fw(role, "RW_LINK_DHCP_LEASE", 1.1, ip=ip, gw="192.168.50.1", acquire_ms=500),
-                       fw(role, "RW_LINK_UDP_BIND", 1.5, ip=ip)]
+                       fw(role, "RW_LINK_UDP_BIND", 2.5, ip=ip)]
             mac = f"02:00:00:00:00:0{peer_id}"
             events.append(fw("ap", "RW_LINK_DHCP_LEASE", 2.5, ip=ip, mac=mac))
             events.append(fw("ap", "RW_LINK_AP_PEER", 3, id=peer_id, ip=ip, mac=mac))
@@ -220,10 +229,12 @@ class ParserTests(unittest.TestCase):
         start = next(e for e in events if e["role"] == "sta" and e["marker"] == "RW_LINK_RUN_START")
         start["fields"].update(id="1", ip="DHCP")
         ip, mac = "192.168.50.22", "02:00:00:00:00:01"
-        events += [fw("ap", "RW_LINK_DHCP_SERVER", .5, value="STARTED"),
+        events += [fw("ap", "RW_LINK_BOOT", -.5, reset_reason=11),
+                   fw("sta", "RW_LINK_BOOT", -.5, reset_reason=11),
+                   fw("ap", "RW_LINK_DHCP_SERVER", .5, value="STARTED"),
                    fw("sta", "RW_LINK_DHCP_CLIENT", 1, value="ENABLED", status=1),
                    fw("sta", "RW_LINK_DHCP_LEASE", 1.2, ip=ip),
-                   fw("sta", "RW_LINK_UDP_BIND", 1.3, ip=ip),
+                   fw("sta", "RW_LINK_UDP_BIND", 2.5, ip=ip),
                    fw("ap", "RW_LINK_DHCP_LEASE", 2, ip=ip, mac=mac),
                    fw("ap", "RW_LINK_AP_PEER", 3, id=1, ip=ip, mac=mac)]
         report = v.apply_acceptance(v.analyze(events), events)
@@ -241,6 +252,56 @@ class ParserTests(unittest.TestCase):
         summary["fields"].update(received=str(received), lost=str(240 - received))
         report = v.apply_acceptance(v.analyze(events), events)
         self.assertIn("fault 1: sta2 echo gap exceeded 5s during sta restart", report["errors"])
+
+    def test_ap_peer_counter_includes_echoes_before_sta_restart(self):
+        events = three_sta_restart_events()
+        expected = sum(e.get("role") == "sta" and e.get("marker") == "RW_LINK_ECHO_MATCH" for e in events)
+        ap_summary = next(e for e in events if e.get("role") == "ap" and e.get("marker") == "RW_LINK_SUMMARY")
+        ap_summary["fields"]["echo_id1"] = "80"
+        self.assertGreater(expected, 80)
+        self.assertIn("three-node: AP echo_id1 does not cover sta exact replies", v.analyze(events)["errors"])
+        ap_summary["fields"]["echo_id1"] = str(expected)
+        self.assertEqual(v.analyze(events)["status"], "PASS")
+
+    def test_ap_counter_scope_resets_with_ap_software_restart(self):
+        events = three_events()
+        events += [fw("ap", "RW_LINK_BOOT", 41, reset_reason=3),
+                   fw("ap", "RW_LINK_RUN_START", 42, id=0, ip="192.168.50.1", max_stas=2),
+                   fw("ap", "RW_LINK_AP_READY", 43),
+                   fw("sta", "RW_LINK_RECOVERY", 45, reason="probe_timeout", downtime_ms=4000),
+                   fw("sta2", "RW_LINK_RECOVERY", 45, reason="probe_timeout", downtime_ms=4000),
+                   {"kind": "fault", "role": "ap", "action": "software_reset",
+                    "monotonic_s": 40, "acknowledged": True}]
+        ap_summary = next(e for e in events if e.get("role") == "ap" and e.get("marker") == "RW_LINK_SUMMARY")
+        scoped = sum(e.get("role") == "sta" and e.get("marker") == "RW_LINK_ECHO_MATCH" and
+                     42 <= e["monotonic_s"] <= ap_summary["monotonic_s"] for e in events)
+        ap_summary["fields"].update(echo_id1=str(scoped), echo_id2=str(scoped))
+        report = v.apply_acceptance(v.analyze(events), events)
+        self.assertEqual(report["status"], "PASS", report["errors"])
+        ap_summary["fields"]["echo_id2"] = str(scoped - 1)
+        self.assertIn("three-node: AP echo_id2 does not cover sta2 exact replies", v.analyze(events)["errors"])
+
+    def test_dhcp_restart_cannot_reuse_lease_from_earlier_boot(self):
+        events = three_sta_restart_events()
+        events += [fw("ap", "RW_LINK_BOOT", -.5, reset_reason=11),
+                   fw("ap", "RW_LINK_DHCP_SERVER", .5, value="STARTED"),
+                   fw("sta", "RW_LINK_BOOT", -.5, reset_reason=11)]
+        for event in events:
+            if event.get("role") == "sta" and event.get("marker") == "RW_LINK_RUN_START":
+                event["fields"]["ip"] = "DHCP"
+        ip, mac = "192.168.50.22", "02:00:00:00:00:01"
+        events += [fw("sta", "RW_LINK_DHCP_CLIENT", 1, value="ENABLED", status=1),
+                   fw("sta", "RW_LINK_DHCP_LEASE", 1.2, ip=ip),
+                   fw("sta", "RW_LINK_UDP_BIND", 2.5, ip=ip),
+                   fw("ap", "RW_LINK_DHCP_LEASE", 2.5, ip=ip, mac=mac),
+                   fw("ap", "RW_LINK_AP_PEER", 3, id=1, ip=ip, mac=mac)]
+        errors = v.analyze(events)["errors"]
+        self.assertIn("sta: DHCP run lacks lease or UDP bind address", errors)
+        self.assertIn("sta: DHCP lease/bind not renewed after software reset", errors)
+        events += [fw("sta", "RW_LINK_DHCP_CLIENT", 42.3, value="ENABLED", status=1),
+                   fw("sta", "RW_LINK_DHCP_LEASE", 42.5, ip=ip),
+                   fw("sta", "RW_LINK_UDP_BIND", 42.7, ip=ip)]
+        self.assertEqual(v.analyze(events)["status"], "PASS", v.analyze(events)["errors"])
 
 
 class FakeClock:
