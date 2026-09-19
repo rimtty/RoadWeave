@@ -1,0 +1,161 @@
+{
+  "normal_firmware_source_commit": "aa58241f266168e28041148cff8da38109ce2b69",
+  "devices": [
+    {
+      "port": "COM4",
+      "mac": "44:b1:76:b0:57:20",
+      "app_binary_sha256": "ab8ab6f0d7d94fe2f56eeb08506fb88f76cf08b676bb4fb9e692d48b6e96d21a",
+      "flash_verified": true
+    },
+    {
+      "port": "COM5",
+      "mac": "44:b1:76:b0:57:1c",
+      "app_binary_sha256": "624bd0e5bffbc84e5d495b993f37bd4cf2cdd889cf56db513c9b0e192094b063",
+      "flash_verified": true
+    },
+    {
+      "port": "COM6",
+      "mac": "44:b1:76:ae:c4:90",
+      "app_binary_sha256": "b4a82989fdd9f0a8e6ce715862f7cbbd37dcaf02a3baf1656c2bf9ca1d7d2ade",
+      "flash_verified": true
+    }
+  ],
+  "runs": [
+    {
+      "case": "final-three-node-restore",
+      "status": "FAIL",
+      "errors": [
+        "sta baseline: fewer than 200 successfully sent probes after warmup",
+        "sta baseline: post-warmup observation shorter than 120s",
+        "sta2 baseline: fewer than 200 successfully sent probes after warmup",
+        "sta2 baseline: post-warmup observation shorter than 120s",
+        "three-node: simultaneous post-warmup interval shorter than 120s"
+      ],
+      "bounded_seconds": 60.0,
+      "simultaneous_post_warmup_s": 47.125,
+      "post_warmup_by_role": {
+        "sta": {
+          "sent": 188.0,
+          "received": 188.0,
+          "warmup_elapsed_ms": 10032.0,
+          "duration_s": 47.17199999999866
+        },
+        "sta2": {
+          "sent": 188.0,
+          "received": 188.0,
+          "warmup_elapsed_ms": 10029.0,
+          "duration_s": 47.125
+        }
+      },
+      "shutdown_markers": {
+        "ap": [
+          "RESULT=PASS",
+          "RW_LINK_DONE",
+          "RW_LINK_RADIO_SHUTDOWN"
+        ],
+        "sta": [
+          "RESULT=PASS",
+          "RW_LINK_DONE",
+          "RW_LINK_RADIO_SHUTDOWN"
+        ],
+        "sta2": [
+          "RESULT=PASS",
+          "RW_LINK_DONE",
+          "RW_LINK_RADIO_SHUTDOWN"
+        ]
+      },
+      "private_capture_sha256": {
+        "report.json": "ec31a4085db3393b0bf8decdf8706d17fe12d1fd50cd028d703d90a71ea27f2f",
+        "events.jsonl": "62e4107a6381435224190b0a23cee347163b7fee71fea14041835df8ebfe2212"
+      }
+    },
+    {
+      "case": "final-three-node-160",
+      "status": "FAIL",
+      "errors": [
+        "sta baseline: post-warmup valid echo delivery below 99.0%",
+        "sta2 baseline: post-warmup valid echo delivery below 99.0%"
+      ],
+      "bounded_seconds": 160.0,
+      "simultaneous_post_warmup_s": 146.93799999999828,
+      "post_warmup_by_role": {
+        "sta": {
+          "sent": 475.0,
+          "received": 447.0,
+          "warmup_elapsed_ms": 10033.0,
+          "duration_s": 146.93799999999828
+        },
+        "sta2": {
+          "sent": 526.0,
+          "received": 512.0,
+          "warmup_elapsed_ms": 10043.0,
+          "duration_s": 146.93799999999828
+        }
+      },
+      "shutdown_markers": {
+        "ap": [
+          "RESULT=PASS",
+          "RW_LINK_DONE",
+          "RW_LINK_RADIO_SHUTDOWN"
+        ],
+        "sta": [
+          "RESULT=PASS",
+          "RW_LINK_DONE",
+          "RW_LINK_RADIO_SHUTDOWN"
+        ],
+        "sta2": [
+          "RESULT=PASS",
+          "RW_LINK_DONE",
+          "RW_LINK_RADIO_SHUTDOWN"
+        ]
+      },
+      "private_capture_sha256": {
+        "report.json": "81eaa305bf483b6b9b368a66dd80557cf9cb4538a86e45b4eefa72588f12d795",
+        "events.jsonl": "7dabf13b43f1f2994b7a50dfbe06b4d17a47f91c5dca23353ce3ab3799d40d49"
+      }
+    },
+    {
+      "case": "final-three-node-160-repeat",
+      "status": "PASS",
+      "errors": [],
+      "bounded_seconds": 160.0,
+      "simultaneous_post_warmup_s": 146.89000000000306,
+      "post_warmup_by_role": {
+        "sta": {
+          "sent": 548.0,
+          "received": 548.0,
+          "warmup_elapsed_ms": 10000.0,
+          "duration_s": 146.89000000000306
+        },
+        "sta2": {
+          "sent": 583.0,
+          "received": 582.0,
+          "warmup_elapsed_ms": 10024.0,
+          "duration_s": 146.98400000000038
+        }
+      },
+      "shutdown_markers": {
+        "ap": [
+          "RESULT=PASS",
+          "RW_LINK_DONE",
+          "RW_LINK_RADIO_SHUTDOWN"
+        ],
+        "sta": [
+          "RESULT=PASS",
+          "RW_LINK_DONE",
+          "RW_LINK_RADIO_SHUTDOWN"
+        ],
+        "sta2": [
+          "RESULT=PASS",
+          "RW_LINK_DONE",
+          "RW_LINK_RADIO_SHUTDOWN"
+        ]
+      },
+      "private_capture_sha256": {
+        "report.json": "1499172c6179d5825c8aab2532a826a079e2868e2c14aa5c69519b11c1d28342",
+        "events.jsonl": "4caecf39fbe220b681e34ab28e183746b49fa545b234e9a788db339b59c6711d"
+      }
+    }
+  ],
+  "current_state": "All three radios reported shutdown and DONE in the final run."
+}
