@@ -172,7 +172,13 @@ class ThroughputRunner(Runner):
         if sent is None:
             raise RuntimeError(f"stage {stage}: no successful-send count for DRAIN")
         self._send(self.receiver, f"DRAIN stage={stage} sent={sent}")
-        self._wait(self.receiver, "RW_TPUT_RX_SUMMARY", stage=stage, timeout=9)
+        drain_ack = self._wait(self.receiver, "RW_TPUT_CMD_ACK", stage=stage, timeout=5)
+        if drain_ack.get("fields", {}).get("command") != "DRAIN":
+            raise RuntimeError(f"stage {stage}: receiver did not acknowledge DRAIN")
+        # USB serial output can arrive several seconds after the firmware's
+        # 3-second device-clock drain. This host-only bound does not extend the
+        # measured DATA window or credit a missing summary as success.
+        self._wait(self.receiver, "RW_TPUT_RX_SUMMARY", stage=stage, timeout=15)
         result = throughput.assess_stage(self.events, stage=stage, sender=self.sender,
                                          receiver=self.receiver, rate_kbps=rate_kbps,
                                          requested_s=seconds, phase=phase,
@@ -296,7 +302,7 @@ def markdown(report: dict) -> str:
                      f"{'yes' if row['sustainable'] else 'no'} |")
     confirmed = report.get("confirmed")
     lines += ["", f"Confirmed highest tested rate: {confirmed['target_kbps']} kbit/s" if confirmed else
-              "No 3×60 s sustainable rate was confirmed.",
+              f"No 3×{report['repeat_seconds']} s sustainable rate was confirmed.",
               "This is a bounded path measurement, not a PHY maximum or long-term capacity claim."]
     if report.get("search_ceiling_reached"):
         lines.append("The paced search reached its configured rate ceiling without a failing boundary.")
@@ -411,6 +417,7 @@ def main() -> int:
         "status": ("SMOKE_PASS" if args.smoke else "PASS") if not errors and search.get("confirmed") else "FAIL",
         "mode": "smoke" if args.smoke else "full",
         "direction": args.direction, "bandwidth_mhz": args.bandwidth_mhz,
+        "repeat_seconds": args.repeat_seconds,
         "stages": runner.stages if runner is not None else [],
         "confirmed": search.get("confirmed"),
         "saturation": search.get("saturation"),

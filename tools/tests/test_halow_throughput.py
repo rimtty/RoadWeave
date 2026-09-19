@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import halow_throughput as t
-from halow_throughput_run import ThroughputRunner, command
+from halow_throughput_run import ThroughputRunner, command, markdown
 
 
 def fw(role, marker, stage, **fields):
@@ -121,6 +121,40 @@ class ThroughputTests(unittest.TestCase):
 
 
 class SearchTests(unittest.TestCase):
+    def test_measure_waits_for_drain_ack_then_bounded_summary(self):
+        class Controlled(ThroughputRunner):
+            def _send(self, role, payload):
+                self.commands.append((role, payload))
+
+            def _wait(self, role, marker, *, stage=None, timeout):
+                self.waits.append((role, marker, stage, timeout))
+                if marker == "RW_TPUT_CMD_ACK":
+                    return {"fields": {"command": "DRAIN"}}
+                if marker == "RW_TPUT_TX_SUMMARY":
+                    return {"fields": {"sent": "400"}}
+                return {"fields": {}}
+
+        runner = Controlled({}, {}, direction="sta_to_ap", startup_timeout=5,
+                            max_seconds=1000, warmup_seconds=5, stage_seconds=30,
+                            repeat_seconds=60, rates=(128,), events=stage_fixture())
+        runner.stage_number = 6
+        runner.deadline = runner.clock() + 1000
+        runner.ips = {"ap": "192.168.50.1", "sta": "192.168.50.2"}
+        runner.commands = []
+        runner.waits = []
+        result = runner.measure(128, 30, "ramp")
+        self.assertTrue(result["valid"], result["errors"])
+        self.assertEqual([wait[1] for wait in runner.waits],
+                         ["RW_TPUT_RX_READY", "RW_TPUT_TX_SUMMARY",
+                          "RW_TPUT_CMD_ACK", "RW_TPUT_RX_SUMMARY"])
+        self.assertEqual(runner.waits[-1][-1], 15)
+
+    def test_smoke_markdown_uses_actual_confirmation_duration(self):
+        rendered = markdown({"status": "FAIL", "direction": "sta_to_ap",
+                             "bandwidth_mhz": 1, "stages": [], "confirmed": None,
+                             "repeat_seconds": 5, "errors": []})
+        self.assertIn("No 3×5 s sustainable rate", rendered)
+
     def test_shutdown_evidence_distinguishes_failure_from_missing_markers(self):
         events = [{"kind": "host_command", "role": "ap", "command": "STOP", "monotonic_s": 10}]
         runner = ThroughputRunner({}, {}, direction="sta_to_ap", startup_timeout=5,
