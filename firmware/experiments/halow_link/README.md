@@ -99,8 +99,15 @@ matched echoed payload bits. This stop-and-wait workload is a link baseline,
 not a maximum-throughput test. RTT percentiles in firmware use 1 ms histogram
 bins and round down; `RW_LINK_ECHO_MATCH` carries each exact RTT for host
 percentile calculations. Rate-control `rc_sent_start/end` and
-`rc_success_start/end` are raw SDK counters, not a retry metric; SNR is `NA`
-because this wrapper does not expose a validated SNR measurement.
+`rc_success_start/end` are raw SDK counters, not a retry metric. Continuous
+samples use `snr_db=NA` because the wrapper does not expose a validated
+continuous SNR measurement. The STA's `RW_LINK_SCAN_TARGET` record includes
+raw scan RSSI, scan noise, received-frame bandwidth (`bw_mhz`) and advertised
+AP operating bandwidth (`op_bw_mhz`). It computes `scan_snr_db` from the same
+scan response only when both dBm inputs lie in -127..-1; otherwise it reports
+`NA`. This range check is a conservative bench rule, not an SDK invalid-value
+contract or a calibrated SNR guarantee. Scan SNR does not describe later UDP
+traffic.
 The duplicate counter recognizes another reply to the most recently matched
 sequence; older delayed replies count as stale (`late`). A successful
 `RW_LINK_RADIO_RESULT` and LED mean the run completed with at least one valid

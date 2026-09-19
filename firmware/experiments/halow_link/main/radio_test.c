@@ -220,8 +220,16 @@ static void scan_rx(const struct mmwlan_scan_result *result, void *arg)
     (void)arg;
     if (result->ssid_len != strlen(CONFIG_RW_LINK_SSID) ||
         memcmp(result->ssid, CONFIG_RW_LINK_SSID, result->ssid_len)) return;
-    printf("RW_LINK_SCAN_TARGET freq_hz=%" PRIu32 " bw_mhz=%u rssi_dbm=%d\n",
-           result->channel_freq_hz, result->bw_mhz, result->rssi);
+    /* Bench sanity rule, not an SDK-defined invalid sentinel or calibrated SNR. */
+    bool valid = result->rssi >= -127 && result->rssi <= -1 &&
+                 result->noise_dbm >= -127 && result->noise_dbm <= -1;
+    char snr[12] = "NA";
+    if (valid) snprintf(snr, sizeof(snr), "%d", result->rssi - result->noise_dbm);
+    printf("RW_LINK_SCAN_TARGET freq_hz=%" PRIu32
+           " bw_mhz=%u op_bw_mhz=%u rssi_dbm=%d noise_dbm=%d"
+           " scan_snr_db=%s scan_snr_status=%s\n",
+           result->channel_freq_hz, result->bw_mhz, result->op_bw_mhz,
+           result->rssi, result->noise_dbm, snr, valid ? "ok" : "out_of_range");
 }
 
 static void sta_event(const struct mmwlan_sta_event_cb_args *event, void *arg)
