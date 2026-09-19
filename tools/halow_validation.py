@@ -268,21 +268,25 @@ def analyze(events: list[dict], expected_roles=None) -> dict:
         ip2 = roles.get("sta2", {}).get("effective_ip")
         if not ip1 or not ip2 or ip1 == ip2:
             errors.append("three-node: STA IPs are missing or identical")
-        ap_summary = roles.get("ap", {}).get("summary") or {}
-        ap_starts = [e for e in events if e.get("role") == "ap" and e.get("marker") == "RW_LINK_RUN_START"]
-        ap_summaries = [e for e in events if e.get("role") == "ap" and e.get("marker") == "RW_LINK_SUMMARY"]
-        ap_scope_start = ap_starts[-1].get("monotonic_s", -1) if ap_starts else float("inf")
-        ap_scope_end = ap_summaries[-1].get("monotonic_s", -1) if ap_summaries else -1
-        peer_matches = {}
-        for station, peer_id in (("sta", "1"), ("sta2", "2")):
-            echoed = number(ap_summary, f"echo_id{peer_id}")
-            matched = sum(e.get("kind") == "firmware" and e.get("role") == station and
-                          e.get("marker") == "RW_LINK_ECHO_MATCH" and
-                          ap_scope_start <= e.get("monotonic_s", -1) <= ap_scope_end for e in events)
-            peer_matches[station] = matched
-            if echoed is None or echoed < matched:
-                errors.append(f"three-node: AP echo_id{peer_id} does not cover {station} exact replies")
-        roles["ap"]["peer_exact_matches_in_final_ap_run"] = peer_matches
+    ap_summary = roles.get("ap", {}).get("summary") or {}
+    ap_starts = [e for e in events if e.get("role") == "ap" and e.get("marker") == "RW_LINK_RUN_START"]
+    ap_summaries = [e for e in events if e.get("role") == "ap" and e.get("marker") == "RW_LINK_SUMMARY"]
+    ap_scope_start = ap_starts[-1].get("monotonic_s", -1) if ap_starts else float("inf")
+    ap_scope_end = ap_summaries[-1].get("monotonic_s", -1) if ap_summaries else -1
+    peer_matches = {}
+    for station in station_roles(expected_roles):
+        peer_id = (roles.get(station, {}).get("run_start") or {}).get("id")
+        if peer_id not in {"1", "2"}:
+            continue  # Legacy offline captures did not record the station ID.
+        echoed = number(ap_summary, f"echo_id{peer_id}")
+        matched = sum(e.get("kind") == "firmware" and e.get("role") == station and
+                      e.get("marker") == "RW_LINK_ECHO_MATCH" and
+                      ap_scope_start <= e.get("monotonic_s", -1) <= ap_scope_end for e in events)
+        peer_matches[station] = matched
+        if echoed is None or echoed < matched:
+            label = "three-node" if "sta2" in expected_roles else station
+            errors.append(f"{label}: AP echo_id{peer_id} does not cover {station} exact replies")
+    roles["ap"]["peer_exact_matches_in_final_ap_run"] = peer_matches
     for fault in faults:
         role = fault.get("role")
         if fault.get("action") not in {"software_reset", "ap_off_10s"}:

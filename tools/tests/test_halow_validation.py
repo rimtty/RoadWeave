@@ -241,6 +241,19 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(report["status"], "PASS", report["errors"])
         self.assertEqual(report["roles"]["sta"]["ip_mode"], "dhcp")
 
+    def test_sequential_com6_uses_sta_id2_and_ap_echo_id2(self):
+        events = good_events()
+        events.append({"kind": "host_inventory", "role": "sta", "port": "COM6", "monotonic_s": -1})
+        start = next(e for e in events if e.get("role") == "sta" and e.get("marker") == "RW_LINK_RUN_START")
+        start["fields"].update(id="2", ip="192.168.50.3")
+        ap_summary = next(e for e in events if e.get("role") == "ap" and e.get("marker") == "RW_LINK_SUMMARY")
+        ap_summary["fields"].update(echo_id1="0", echo_id2="240")
+        report = v.apply_acceptance(v.analyze(events), events)
+        self.assertEqual(report["status"], "PASS", report["errors"])
+        self.assertEqual(report["roles"]["ap"]["peer_exact_matches_in_final_ap_run"]["sta"], 240)
+        ap_summary["fields"]["echo_id2"] = "0"
+        self.assertIn("sta: AP echo_id2 does not cover sta exact replies", v.analyze(events)["errors"])
+
     def test_three_node_restart_other_station_continues(self):
         events = three_sta_restart_events()
         report = v.apply_acceptance(v.analyze(events), events)
