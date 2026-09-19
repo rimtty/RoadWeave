@@ -72,6 +72,51 @@ regulatory database; use its S1G operating class.
 - Both stop the radio when their test ends. Socket receives/sends are bounded.
 - DHCP, reconnection, long-duration soak and throughput saturation are separate tests.
 
+## Finite continuous validation mode
+
+Enable `RW_LINK_CONTINUOUS` in both RF-enabled builds to run a bounded UDP echo
+validation instead of the legacy 20-probe test. Set `RW_LINK_RUN_SECONDS` for each
+role (for example AP 240, STA 180), `RW_LINK_PAYLOAD_BYTES` (default 256),
+`RW_LINK_INTERVAL_MS` (default 250, STA only), and optionally
+`RW_LINK_MAX_PROBES` (0 means use the duration limit). Keep the AP duration long
+enough for STA startup and the intended observation. The configured duration is
+at most eight hours; this mode does not itself constitute an eight-hour soak.
+
+The AP accepts up to two STAs. Select `RW_LINK_STA_ID=1` for `192.168.50.2/24`
+or `RW_LINK_STA_ID=2` for `192.168.50.3/24` when building each STA. Never boot
+two STAs with the same ID/IP at once. The AP checks each datagram's source IP
+against its ID and reports separate echo counts. These are still static IP
+addresses; DHCP requires a separate netif change.
+
+Each run prints `RW_LINK_BOOT`, `RW_LINK_RUN_START`, ten-second cumulative
+`RW_LINK_SAMPLE`, per-probe `RW_LINK_ECHO_MATCH` or `RW_LINK_TIMEOUT`, final
+`RW_LINK_SUMMARY`, `RW_LINK_RUN_END`, and the existing shutdown/DONE markers.
+The STA summary includes planned slots, successful sends, matching replies,
+lost sends, skipped slots, send failures, stale/duplicate/invalid replies,
+throughput, heap, RSSI, and raw rate-control counters. `offered_bps` counts
+successfully sent UDP payload bits over elapsed time; `useful_bps` counts only
+matched echoed payload bits. This stop-and-wait workload is a link baseline,
+not a maximum-throughput test. RTT percentiles in firmware use 1 ms histogram
+bins and round down; `RW_LINK_ECHO_MATCH` carries each exact RTT for host
+percentile calculations. Rate-control `rc_sent_start/end` and
+`rc_success_start/end` are raw SDK counters, not a retry metric; SNR is `NA`
+because this wrapper does not expose a validated SNR measurement.
+
+The STA remains enabled across a link drop, letting the pinned Morse supplicant
+reconnect. After a previously working link stops answering, the first matching
+echo prints `RW_LINK_RECOVERY` with time since detection. It measures application
+recovery, which can lag the physical link event. A run with some packet loss can
+still report `RW_LINK_RADIO_RESULT=PASS`; use the summary and test-plan thresholds
+to judge link quality.
+
+While this mode is active, send a newline-terminated command to the USB
+Serial/JTAG console: `RW_LINK_CMD RESTART` acknowledges and performs a software
+reset; `RW_LINK_CMD AP_OFF_10S` on the AP disables its service for ten seconds,
+reenables it and emits a new `RW_LINK_AP_READY`; `RW_LINK_CMD STOP` prints the
+final summary and shuts down the radio. The AP outage is a controlled service
+interruption, not a calibrated RF propagation loss. Software reset is reported
+by `RW_LINK_BOOT reset_reason` and must not be counted as a cold power cycle.
+
 ## User LED
 
 The [XIAO ESP32S3 user LED](https://wiki.seeedstudio.com/xiao-esp32s3-freertos/)
