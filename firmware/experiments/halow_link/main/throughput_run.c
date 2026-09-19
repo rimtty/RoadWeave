@@ -164,20 +164,34 @@ static void read_commands(void *arg)
 {
     (void)arg;
     char line[160];
+    size_t len = 0;
+    bool overflow = false;
     for (;;) {
-        if (!fgets(line, sizeof(line), stdin)) {
+        /* USB Serial/JTAG can return a short read before the newline. Keep
+         * fragments until a complete command arrives; length is checked
+         * across all fragments, not per stdio read. */
+        int ch = fgetc(stdin);
+        if (ch == EOF) {
             clearerr(stdin);
-            vTaskDelay(pdMS_TO_TICKS(100));
+            vTaskDelay(pdMS_TO_TICKS(10));
             continue;
         }
-        size_t len = strlen(line);
-        if (len && line[len - 1] != '\n' && !feof(stdin)) {
-            int ch;
-            while ((ch = getchar()) != '\n' && ch != EOF) {}
+        if (ch != '\n') {
+            if (!overflow) {
+                if (len < sizeof(line) - 1) line[len++] = (char)ch;
+                else overflow = true;
+            }
+            continue;
+        }
+        if (overflow) {
             print_reject("too_long");
+            len = 0;
+            overflow = false;
             continue;
         }
-        while (len && (line[len - 1] == '\n' || line[len - 1] == '\r')) line[--len] = '\0';
+        while (len && line[len - 1] == '\r') --len;
+        line[len] = '\0';
+        len = 0;
         struct tput_command command;
         if (!parse_command(line, &command)) {
             print_reject("syntax_or_range");
