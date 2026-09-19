@@ -13,6 +13,8 @@ bool validation_sta_ip(char *out, size_t out_len);
 bool validation_ap_netif_up(void);
 bool validation_ap_netif_down(void);
 bool validation_ap_lease_mac(uint32_t ip_addr, uint8_t mac[6]);
+bool validation_restart_requested(void);
+bool validation_radio_shutdown_ok(void);
 #if defined(CONFIG_RW_LINK_DHCP) && defined(CONFIG_RW_LINK_AP)
 void validation_dhcp_wrap_begin(void);
 void validation_dhcp_wrap_end(void);

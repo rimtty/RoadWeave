@@ -36,6 +36,13 @@
 static EventGroupHandle_t events;
 static esp_netif_t *netif;
 static struct mmwlan_s1g_channel_list bench_channels;
+#ifdef CONFIG_RW_LINK_CONTINUOUS
+static bool radio_shutdown_ok;
+bool validation_radio_shutdown_ok(void)
+{
+    return radio_shutdown_ok;
+}
+#endif
 #ifdef CONFIG_RW_LINK_DHCP
 static uint32_t dhcp_wait_start_ms;
 #ifdef CONFIG_RW_LINK_AP
@@ -428,6 +435,10 @@ bool run_radio_test(void)
     ESP_ERROR_CHECK(mmhalow_init(NULL));
 #endif
     bool ok = false;
+    bool shutdown_ok = true;
+#ifdef CONFIG_RW_LINK_CONTINUOUS
+    radio_shutdown_ok = false;
+#endif
 #ifdef CONFIG_RW_LINK_AP
     bool ap_started = false;
 #else
@@ -517,15 +528,22 @@ done:
 #ifdef CONFIG_RW_LINK_AP
     if (ap_started) {
 #ifdef CONFIG_RW_LINK_CONTINUOUS
-        if (!validation_ap_netif_down()) ok = false;
+        if (!validation_ap_netif_down()) { ok = false; shutdown_ok = false; }
 #endif
-        if (mmwlan_ap_disable() != MMWLAN_SUCCESS) ok = false;
+        if (mmwlan_ap_disable() != MMWLAN_SUCCESS) { ok = false; shutdown_ok = false; }
     }
 #else
-    if (sta_started && mmhalow_disconnect() != MMWLAN_SUCCESS) ok = false;
+    if (sta_started && mmhalow_disconnect() != MMWLAN_SUCCESS) {
+        ok = false;
+        shutdown_ok = false;
+    }
 #endif
     /* Keep event storage alive until reboot: the driver may have queued callbacks. */
-    if (mmhalow_deinit() != MMWLAN_SUCCESS) ok = false;
+    if (mmhalow_deinit() != MMWLAN_SUCCESS) { ok = false; shutdown_ok = false; }
+    if (!shutdown_ok) ok = false;
+#ifdef CONFIG_RW_LINK_CONTINUOUS
+    radio_shutdown_ok = shutdown_ok;
+#endif
     printf("RW_LINK_RADIO_SHUTDOWN\n");
     return ok;
 }

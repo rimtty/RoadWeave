@@ -123,7 +123,11 @@ to judge link quality.
 
 While this mode is active, send a newline-terminated command to the USB
 Serial/JTAG console: `RW_LINK_CMD RESTART` acknowledges and performs a software
-reset; `RW_LINK_CMD AP_OFF_10S` on the AP disables its service for ten seconds,
+reset after stopping the AP/STA service and shutting down the MM6108 driver;
+`RW_LINK_RESTART_READY` marks completion of that cleanup. Warm boot also clears
+the WM6180 SPI IRQ GPIO interrupt before installing the ISR service, because a
+still-active module can hold its active-low IRQ across an ESP32 software reset.
+`RW_LINK_CMD AP_OFF_10S` on the AP disables its service for ten seconds,
 reenables it and emits a new `RW_LINK_AP_READY`; `RW_LINK_CMD STOP` prints the
 final summary and shuts down the radio. The AP outage is a controlled service
 interruption, not a calibrated RF propagation loss. Software reset is reported
