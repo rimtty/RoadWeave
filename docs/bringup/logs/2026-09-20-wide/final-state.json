@@ -51,17 +51,20 @@
         "ap": [
           "RESULT=PASS",
           "RW_LINK_DONE",
-          "RW_LINK_RADIO_SHUTDOWN"
+          "RW_LINK_RADIO_SHUTDOWN",
+          "STOP_ACK"
         ],
         "sta": [
           "RESULT=PASS",
           "RW_LINK_DONE",
-          "RW_LINK_RADIO_SHUTDOWN"
+          "RW_LINK_RADIO_SHUTDOWN",
+          "STOP_ACK"
         ],
         "sta2": [
           "RESULT=PASS",
           "RW_LINK_DONE",
-          "RW_LINK_RADIO_SHUTDOWN"
+          "RW_LINK_RADIO_SHUTDOWN",
+          "STOP_ACK"
         ]
       },
       "private_capture_sha256": {
@@ -96,17 +99,20 @@
         "ap": [
           "RESULT=PASS",
           "RW_LINK_DONE",
-          "RW_LINK_RADIO_SHUTDOWN"
+          "RW_LINK_RADIO_SHUTDOWN",
+          "STOP_ACK"
         ],
         "sta": [
           "RESULT=PASS",
           "RW_LINK_DONE",
-          "RW_LINK_RADIO_SHUTDOWN"
+          "RW_LINK_RADIO_SHUTDOWN",
+          "STOP_ACK"
         ],
         "sta2": [
           "RESULT=PASS",
           "RW_LINK_DONE",
-          "RW_LINK_RADIO_SHUTDOWN"
+          "RW_LINK_RADIO_SHUTDOWN",
+          "STOP_ACK"
         ]
       },
       "private_capture_sha256": {
@@ -138,17 +144,20 @@
         "ap": [
           "RESULT=PASS",
           "RW_LINK_DONE",
-          "RW_LINK_RADIO_SHUTDOWN"
+          "RW_LINK_RADIO_SHUTDOWN",
+          "STOP_ACK"
         ],
         "sta": [
           "RESULT=PASS",
           "RW_LINK_DONE",
-          "RW_LINK_RADIO_SHUTDOWN"
+          "RW_LINK_RADIO_SHUTDOWN",
+          "STOP_ACK"
         ],
         "sta2": [
           "RESULT=PASS",
           "RW_LINK_DONE",
-          "RW_LINK_RADIO_SHUTDOWN"
+          "RW_LINK_RADIO_SHUTDOWN",
+          "STOP_ACK"
         ]
       },
       "private_capture_sha256": {
