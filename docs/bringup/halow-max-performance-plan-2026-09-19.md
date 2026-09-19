@@ -27,7 +27,7 @@ Morse rate controlを有効にした後、**2 MHzでiperf3 UDP約6.8 Mbps、TCP�
 これは外部ホストでの本人の測定報告で、製品保証値ではない。記事後半にi.MX8MMという表記もあるため、厳密なホスト型番は記事内で不一致として保持する。
 SPI版XIAOへの転用、同じloss基準・測定窓の仮定、達成必須の合格値への採用はしない。
 ただし「2 MHzだから3.115 Mbpsが限界」という推論を退け、rate control確認を優先する根拠になる。
-出典: [What is maximum speed of MM6108, 投稿3/5（2025-03-04/06）](https://community.morsemicro.com/t/what-is-maximum-speed-of-mm6108/241/5)。
+出典: [What is maximum speed of MM6108, 投稿3/5（2025-03-04/06）](https://community.morsemicro.com/t/what-is-maximum-speed-of-mm6108/241)。
 
 ## 段階と終了成果
 
