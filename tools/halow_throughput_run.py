@@ -16,6 +16,10 @@ from halow_validation_run import (EXPECTED, EventJournal, Runner, emit, git_stat
                                   open_port, sha256, verify_inventory)
 
 DEFAULT_RATES = (128, 256, 512, 1000, 2000, 4000, 8000)
+WIDE_RATES = {
+    4: DEFAULT_RATES + (12000, 16000),
+    8: DEFAULT_RATES + (12000, 16000, 24000, 32000),
+}
 MAX_STAGE_SEQUENCE = 262144
 
 
@@ -266,21 +270,27 @@ class ThroughputRunner(Runner):
         self.measure(self.rates[0], self.warmup_seconds, "warmup")
         passing = []
         failure_rate = None
+        failed_rates = []
         for rate in self.rates:
             result = self.measure(rate, self.stage_seconds, "ramp")
             if result["sustainable"]:
                 passing.append(result)
             else:
-                failure_rate = rate
-                break
+                failed_rates.append(rate)
+                if failure_rate is None:
+                    failure_rate = rate
+                if self.bandwidth_mhz not in (4, 8):
+                    break
         if not passing:
             for rate in (64, 32):
                 result = self.measure(rate, self.stage_seconds, "lower_probe")
                 if result["sustainable"]:
                     passing.append(result)
                     break
-        if passing and failure_rate:
-            lower, upper = passing[-1]["target_kbps"], failure_rate
+        upper_failures = [rate for rate in failed_rates
+                          if passing and rate > passing[-1]["target_kbps"]]
+        if passing and upper_failures:
+            lower, upper = passing[-1]["target_kbps"], min(upper_failures)
             for _ in range(2):
                 midpoint = (lower + upper) // 2
                 if midpoint <= lower or midpoint >= upper:
@@ -304,7 +314,8 @@ class ThroughputRunner(Runner):
                 break
         saturation = None if self.smoke else self.measure(0, self.stage_seconds, "saturation")
         return {"confirmed": confirmed, "saturation": saturation,
-                "search_ceiling_reached": failure_rate is None,
+                "search_ceiling_reached": self.rates[-1] in {
+                    row["target_kbps"] for row in passing},
                 "first_failed_rate_kbps": failure_rate,
                 "confirmation_incomplete": confirmation_incomplete}
 
@@ -402,13 +413,16 @@ def main() -> int:
     p.add_argument("--warmup-seconds", type=int, default=5)
     p.add_argument("--stage-seconds", type=int, default=30)
     p.add_argument("--repeat-seconds", type=int, default=60)
-    p.add_argument("--rates-kbps", type=int, nargs="+", default=DEFAULT_RATES)
+    p.add_argument("--rates-kbps", type=int, nargs="+",
+                   help="ascending test rates; defaults extend to 16/32 Mbit/s for 4/8 MHz")
     p.add_argument("--smoke", action="store_true",
                    help="skip the unpaced stage and label outcome SMOKE_PASS")
     p.add_argument("--startup-timeout", type=float, default=90)
     p.add_argument("--max-seconds", type=float, default=1500)
     p.add_argument("--baud", type=int, default=115200)
     args = p.parse_args()
+    if args.rates_kbps is None:
+        args.rates_kbps = WIDE_RATES.get(args.bandwidth_mhz, DEFAULT_RATES)
     if args.bandwidth_mhz in (4, 8) and (args.channel is None or args.channel <= 0 or
                                           args.opclass is None or args.opclass <= 0):
         p.error("4/8 MHz requires explicit positive --channel and --opclass")

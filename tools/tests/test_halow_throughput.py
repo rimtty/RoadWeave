@@ -6,8 +6,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import halow_throughput as t
-from halow_throughput_run import (ThroughputRunner, check_stage_capacity, command, markdown,
-                                  verify_radio_profile)
+from halow_throughput_run import (ThroughputRunner, WIDE_RATES, check_stage_capacity,
+                                  command, markdown, verify_radio_profile)
 
 
 def fw(role, marker, stage, **fields):
@@ -124,6 +124,9 @@ class ThroughputTests(unittest.TestCase):
 class SearchTests(unittest.TestCase):
     def test_sequence_capacity_check_is_bounded(self):
         check_stage_capacity(8000, 60)
+        self.assertGreater(max(WIDE_RATES[4]), 8000)
+        self.assertGreater(max(WIDE_RATES[8]), max(WIDE_RATES[4]))
+        check_stage_capacity(max(WIDE_RATES[8]), 60)
         with self.assertRaisesRegex(ValueError, "sequence capacity"):
             check_stage_capacity(50000, 60)
 
@@ -222,7 +225,7 @@ class SearchTests(unittest.TestCase):
         events[-2]["fields"]["value"] = "PASS"
         self.assertEqual(runner._shutdown_evidence("ap"), (True, True))
 
-    def make_runner(self, *, repeat_fails=()):
+    def make_runner(self, *, repeat_fails=(), ramp_fails=(), bandwidth_mhz=1):
         class Clock:
             t = 0.
 
@@ -240,7 +243,8 @@ class SearchTests(unittest.TestCase):
                 self.stage_number += 1
                 self.sleep(seconds + 3)
                 sustainable = rate_kbps > 0 and rate_kbps <= 256 and not (
-                    phase == "confirm" and rate_kbps in repeat_fails)
+                    phase == "confirm" and rate_kbps in repeat_fails) and not (
+                    phase == "ramp" and rate_kbps in ramp_fails)
                 row = {"stage": self.stage_number, "phase": phase,
                        "target_kbps": rate_kbps, "valid": True,
                        "sustainable": sustainable,
@@ -252,7 +256,17 @@ class SearchTests(unittest.TestCase):
         return MockSearch({}, {}, direction="sta_to_ap", startup_timeout=5,
                           max_seconds=1000, warmup_seconds=5, stage_seconds=30,
                           repeat_seconds=60, rates=(128, 256, 512),
+                          bandwidth_mhz=bandwidth_mhz,
                           clock=clock, sleep=clock.sleep)
+
+    def test_wide_search_checks_above_an_initial_nonmonotonic_loss(self):
+        runner = self.make_runner(bandwidth_mhz=4, ramp_fails={128})
+        result = runner.run_search()
+        self.assertEqual([s["target_kbps"] for s in runner.stages if s["phase"] == "ramp"],
+                         [128, 256, 512])
+        self.assertEqual(result["first_failed_rate_kbps"], 128)
+        self.assertEqual(result["confirmed"]["target_kbps"], 256)
+        self.assertFalse(result["search_ceiling_reached"])
 
     def test_ramp_refines_then_confirms_three_times(self):
         runner = self.make_runner()
