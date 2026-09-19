@@ -78,7 +78,27 @@ def station_roles(expected_roles) -> tuple[str, ...]:
     return tuple(role for role in expected_roles if role != "ap")
 
 
+def managed_events(events: list[dict]) -> list[dict]:
+    """Exclude telemetry seen before each role's initial host serial reset.
+
+    A freshly flashed STA may boot on its own while the host is starting AP.
+    Those bytes stay in the raw/event files, but cannot enter this run's gates.
+    """
+    gates = {}
+    for event in events:
+        role = event.get("role")
+        if role not in {"ap", "sta", "sta2"}:
+            continue
+        if event.get("kind") == "host_reset" and event.get("action") == "serial_reset":
+            gates.setdefault(role, event.get("monotonic_s", 0))
+    return [event for event in events if not (
+        event.get("kind") == "firmware" and event.get("role") in gates and
+        event.get("monotonic_s", -1) < gates[event["role"]])]
+
+
 def analyze(events: list[dict], expected_roles=None) -> dict:
+    raw_event_count = len(events)
+    events = managed_events(events)
     if expected_roles is None:
         inventory_roles = {e.get("role") for e in events if e.get("kind") == "host_inventory"}
         expected_roles = ("ap", "sta", "sta2") if "sta2" in inventory_roles else ("ap", "sta")
@@ -272,7 +292,8 @@ def analyze(events: list[dict], expected_roles=None) -> dict:
     errors.extend(f"{e.get('role', '?')}: raw serial panic/watchdog marker {e.get('code', '?')}"
                   for e in events if e.get("kind") == "panic")
     return {"status": "PASS" if not errors else "FAIL", "errors": errors,
-            "roles": roles, "faults": faults, "event_count": len(events), "cold_boot_counted": 0}
+            "roles": roles, "faults": faults, "event_count": len(events),
+            "ignored_prestart_events": raw_event_count - len(events), "cold_boot_counted": 0}
 
 
 def longest_streak(echoes: list[dict]) -> int:
@@ -290,6 +311,7 @@ def apply_acceptance(report: dict, events: list[dict], *, min_sent=200,
                      min_delivery=0.99, min_duration_s=120,
                      recovery_limit_s=60, consecutive=20) -> dict:
     """Apply the P0-A finite-run gates to an analyzed capture."""
+    events = managed_events(events)
     errors = report["errors"]
     stations = tuple(role for role in report["roles"] if role != "ap")
     faults = report["faults"]

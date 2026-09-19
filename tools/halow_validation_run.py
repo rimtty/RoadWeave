@@ -197,6 +197,10 @@ class Runner:
 
     def run(self) -> list[dict]:
         if self.initial_reset:
+            for port in self.ports.values():
+                flush = getattr(port, "reset_input_buffer", None)
+                if callable(flush):
+                    flush()
             emit(self.events, self.clock, "host_reset", role="ap", action="serial_reset")
             self.initial_reset(self.ports["ap"])
         gate_deadline = self.clock() + self.ap_ready_timeout

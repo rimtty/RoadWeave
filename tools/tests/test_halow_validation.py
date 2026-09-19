@@ -90,6 +90,19 @@ class ParserTests(unittest.TestCase):
         report = v.apply_acceptance(v.analyze(good_events()), good_events())
         self.assertEqual(report["status"], "PASS", report["errors"])
 
+    def test_flash_autoboot_before_managed_sta_reset_is_excluded(self):
+        events = good_events()
+        events += [fw("sta", "RW_LINK_BOOT", .2, reset_reason=11),
+                   fw("sta", "RW_LINK_RUN_START", .4, id=1),
+                   fw("sta", "RW_LINK_ECHO_MATCH", .8, seq=999, rtt_us=1000),
+                   {"kind": "host_reset", "role": "ap", "action": "serial_reset", "monotonic_s": 0},
+                   {"kind": "host_reset", "role": "sta", "action": "serial_reset", "monotonic_s": 1.5}]
+        report = v.apply_acceptance(v.analyze(events), events)
+        self.assertEqual(report["status"], "PASS", report["errors"])
+        self.assertEqual(report["ignored_prestart_events"], 3)
+        events.append(fw("sta", "RW_LINK_BOOT", 50, reset_reason=7))
+        self.assertIn("sta: unexpected or missing post-start boot count", v.analyze(events)["errors"])
+
     def test_missing_summary_and_missing_matches_fail(self):
         events = good_events()
         events = [e for e in events if not (e["role"] == "sta" and e["marker"] == "RW_LINK_SUMMARY")]
