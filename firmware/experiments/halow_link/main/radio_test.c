@@ -495,7 +495,11 @@ bool run_radio_test(void)
     esp_netif_action_connected(netif, NULL, 0, NULL);
 #endif
 #ifdef CONFIG_RW_LINK_CONTINUOUS
+#ifdef CONFIG_RW_LINK_THROUGHPUT
+    ok = run_throughput();
+#else
     ok = run_validation_ap(&ap);
+#endif
 #else
     ok = echo_server();
 #endif
@@ -517,7 +521,11 @@ bool run_radio_test(void)
     if (sta_start != MMWLAN_SUCCESS) goto done;
     sta_started = true;
 #ifdef CONFIG_RW_LINK_CONTINUOUS
+#ifdef CONFIG_RW_LINK_THROUGHPUT
+    ok = run_throughput();
+#else
     ok = run_validation_sta();
+#endif
 #else
     EventBits_t bits = xEventGroupWaitBits(events, LINK_BIT | IP_BIT, pdFALSE, pdTRUE, pdMS_TO_TICKS(30000));
     if ((bits & (LINK_BIT | IP_BIT)) == (LINK_BIT | IP_BIT)) ok = udp_probes();

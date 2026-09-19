@@ -36,6 +36,18 @@ config RW_LINK_CONTINUOUS
     bool "Finite continuous UDP validation (legacy 20 probes when disabled)"
     default n
     depends on RW_LINK_RF_ENABLE
+config RW_LINK_THROUGHPUT
+    bool "Serial-controlled finite one-way UDP throughput stages"
+    default n
+    depends on RW_LINK_CONTINUOUS
+    help
+        Opt-in replacement for the continuous echo workload. AP and STA can
+        each receive or send bounded, independently commanded UDP stages.
+config RW_TPUT_SESSION_SECONDS
+    int "Maximum throughput command-session duration in seconds"
+    range 60 3600
+    default 1800
+    depends on RW_LINK_THROUGHPUT
 config RW_LINK_DHCP
     bool "Use AP DHCP server and STA DHCP client in continuous mode"
     default n
