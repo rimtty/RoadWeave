@@ -44,6 +44,13 @@ class ParserTests(unittest.TestCase):
         event = v.parse_line("I (100) LINK: RW_LINK_SAMPLE sent=4 received=3 psk=secret heap_free=800")
         self.assertEqual(event, {"marker": "RW_LINK_SAMPLE", "fields": {"sent": "4", "received": "3", "heap_free": "800"}})
 
+    def test_coalesced_driver_prefix_and_multiple_markers(self):
+        self.assertEqual(v.parse_lines("...timeout 8379RW_LINK_ECHO_MATCH seq=16 rtt_us=11601"),
+                         [{"marker": "RW_LINK_ECHO_MATCH", "fields": {"seq": "16", "rtt_us": "11601"}}])
+        self.assertEqual(v.parse_lines("8379RW_LINK_RADIO_RESULT=PASSRW_LINK_DONE"),
+                         [{"marker": "RW_LINK_RADIO_RESULT", "fields": {"value": "PASS"}},
+                          {"marker": "RW_LINK_DONE", "fields": {}}])
+
     def test_good_complete_baseline(self):
         report = v.apply_acceptance(v.analyze(good_events()), good_events())
         self.assertEqual(report["status"], "PASS", report["errors"])

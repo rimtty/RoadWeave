@@ -135,16 +135,13 @@ class Runner:
             if pattern.lower() in decoded.lower():
                 emit(self.events, self.clock, "panic", role=role, code=name,
                      boot_index=self.boot_index[role], raw_line=self.line_number[role])
-        parsed = validation.parse_line(decoded)
-        if not parsed:
-            return
-        if parsed["marker"] == "RW_LINK_BOOT":
-            self.boot_index[role] += 1
-        item = emit(self.events, self.clock, "firmware", role=role, **parsed)
-        if role == "ap" and parsed["marker"] == "RW_LINK_AP_READY":
-            self.ap_ready = True
-        print(f"[{role}] {parsed['marker']} {parsed['fields']}", flush=True)
-        return item
+        for parsed in validation.parse_lines(decoded):
+            if parsed["marker"] == "RW_LINK_BOOT":
+                self.boot_index[role] += 1
+            emit(self.events, self.clock, "firmware", role=role, **parsed)
+            if role == "ap" and parsed["marker"] == "RW_LINK_AP_READY":
+                self.ap_ready = True
+            print(f"[{role}] {parsed['marker']} {parsed['fields']}", flush=True)
 
     def poll(self):
         for role, port in self.ports.items():

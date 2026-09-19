@@ -9,7 +9,7 @@ import math
 import re
 from pathlib import Path
 
-MARKER = re.compile(r"(?:^|\s)(RW_LINK_[A-Z_]+)(?:=([^\s;]+))?(?:\s|$)")
+MARKER = re.compile(r"RW_LINK_[A-Z_]+")
 FIELD = re.compile(r"([a-z][a-z0-9_]*)=([^\s;]+)")
 ALLOWED = {
     "RW_LINK_AP_READY", "RW_LINK_RUN_START", "RW_LINK_SAMPLE",
@@ -39,15 +39,28 @@ SAFE_FIELDS = {
 }
 
 
+def parse_lines(line: str) -> list[dict]:
+    """Extract all known telemetry, including markers joined to driver text."""
+    matches = list(MARKER.finditer(line))
+    output = []
+    for index, match in enumerate(matches):
+        marker = match.group(0)
+        if marker not in ALLOWED:
+            continue
+        end = matches[index + 1].start() if index + 1 < len(matches) else len(line)
+        segment = line[match.end():end]
+        fields = {k: v for k, v in FIELD.findall(segment) if k in SAFE_FIELDS}
+        value = re.match(r"=([^\s;]+)", segment)
+        if value is not None:
+            fields["value"] = value.group(1)
+        output.append({"marker": marker, "fields": fields})
+    return output
+
+
 def parse_line(line: str) -> dict | None:
-    """Extract known telemetry only; arbitrary serial text stays private."""
-    match = MARKER.search(line)
-    if not match or match.group(1) not in ALLOWED:
-        return None
-    fields = {k: v for k, v in FIELD.findall(line[match.start():]) if k in SAFE_FIELDS}
-    if match.group(2) is not None:
-        fields["value"] = match.group(2)
-    return {"marker": match.group(1), "fields": fields}
+    """Return the first known telemetry marker for simple callers."""
+    events = parse_lines(line)
+    return events[0] if events else None
 
 
 def number(fields: dict, key: str) -> int | float | None:
