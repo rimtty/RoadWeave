@@ -4,6 +4,14 @@
 ユーザー指示により、計画・進行管理をAstra、実装をSolが担当する。
 計画の作成は試験の成功を意味しない。結果は別の実証レポートへ実測値と証跡を記録する。
 
+当日の更新: [実証結果](p0-a-validation-report-2026-09-19.md)に実測と修正前FAILを保存する。
+ユーザー指示によりT08の実電源断50回は[Issue #27](https://github.com/rimtty/RoadWeave/issues/27)へ延期
+（対応する電源制御設備がなく、手動50回も実施不可）。T11は測定器未保有のため
+[Issue #28](https://github.com/rimtty/RoadWeave/issues/28)へ延期し、[購入前の必要仕様](p0-a-equipment-followups-2026-09-19.md)を残す。
+8時間soakは当初どおり対象外。これらを短時間resetやUSB列挙で代替しない。
+AP software restartの実不具合を受け、修正後のT03/T04はradio停止後のcontrolled software restartとして実施する。
+1/2 MHz各3回の比較は同一の修正版sourceで揃え、修正前の成功／失敗とは別caseにする。
+
 ## 到達目標と固定条件
 
 - 今日の成果を機能別ブランチ・レビュー・マージで保存し、実機に書いたコミットと設定を追跡できるようにする。
@@ -91,10 +99,10 @@ STA側はDHCPを使用したこと、取得したIP/gateway/netmask、取得時�
 | T05 一時通信断 | AP無線機能停止10秒→再開、3回 | 各回再開後60秒以内に自動echo復帰。AP再起動とは別記録。これは電波伝搬によるlink lossの代用証明ではない |
 | T06 DHCP | 両STAを順番にクライアントとして取得、T03/T04の組合せ | 両個体のDHCP由来アドレスとUDP成功、AP/STA再起動後のIP状態が正常。設定がDHCPというだけではPASSにしない |
 | T07 1/2 MHz比較 | 規制DBで有効な各幅、同じ2台・負荷で各3回 | 各回T02を満たす。周波数・帯域・RSSI・loss・RTT・goodput・SDK統計・取得できない項目を記録。2 MHzの方が速いことを必須にしない |
-| T08 起動再現性 | 2組それぞれ実電源OFF→ONを50回 | 各50/50でSPI/MM6108初期化成功。電源断の操作・保持時間・再列挙・boot logを保存。serial resetを含めない |
+| T08 起動再現性 | 当日延期、Issue #27。将来2組それぞれ実電源OFF→ONを50回 | 各50/50でSPI/MM6108初期化成功。電源断の操作・保持時間・再列挙・boot logを保存。serial resetを含めない |
 | T09 短時間再初期化 | T08用電源制御が無い場合にも通常reset/無線再起動を反復 | 件数・警告頻度・成功率を報告する補助試験。cold boot50回の条件は未達のまま |
 | T10 ボード警告 | 各起動と障害復帰logを照合 | `Address base set failed` / unknown TLV等を分類、後続FW起動・通信成功との対応を記録。無根拠なログ抑制や「無害」断定をしない |
-| T11 電源 | 計測器を使いidle/RX/TX、rail電圧を実測 | 測定点、USB全体かモジュール単体か、機器型番、sampling/帯域、平均/peakと通信条件を記録。低速USBメーター値をRF burst peakと呼ばない |
+| T11 電源 | 当日延期、Issue #28。計測器購入後idle/RX/TX、rail電圧を実測 | 測定点、USB全体かモジュール単体か、機器型番、sampling/帯域、平均/peakと通信条件を記録。低速USBメーター値をRF burst peakと呼ばない |
 | T12 受入 | 3個体の物理ラベル・基板組合せ・アンテナ・外観・無通電導通・LED | 写真／目視／計測の実証を個体へ対応付ける。USB認識から外観・導通・LED目視を推定しない |
 
 T03/T04のserial resetは復帰試験として有効だが、T08とは異なる。
@@ -119,6 +127,13 @@ BUSY未配線は「観測FAILのまま基板非適用と理由を記す」扱い
 2台試験が安定し時間が残る場合、AP最大STA数2、DHCPまたは固有固定IP、個体ID、peer別検証／統計を実装する。
 2STAが同時に各200送信以上、各受信率99%以上を満たすことと、一方のSTA再起動中に他方が動き続けることを確認する。
 元のP0-A必須条件ではないため、未実施を基本2台通信のFAILにはしない。
+
+最終実施計画の追加（実行前にAstra確認）: 修正版・標準256 B/250 ms・1 MHzで3台baseline150秒を行い、
+warmup後の共有120秒以上・各200送信以上99%を満たした後、別case230秒でSTA1を30秒、STA2を110秒にcontrolled restartする。
+各faultでACK、新BOOT reason3、新DHCP lease/UDP bind、起動から60秒以内のecho復帰と20連続応答を確認する。
+他方STAは対象の停止前から復帰後までechoが続き、間隔5秒以内、当該区間にtimeout/outage/send failがないことを求める。
+最初のfaultから次まで80秒を確保し、両方の物理STAについて復帰と相互の通信継続を検証する。
+fault caseはbaselineの共有120秒測定とは分け、最後に3台とも正常終了する。実装変更は追加しない。
 
 ## 進行管理とレポート
 

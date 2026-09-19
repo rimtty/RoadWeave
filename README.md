@@ -92,9 +92,11 @@ RoadWeave/
 
 ## ステータス
 
-2026-09-19時点: 3組のSPI診断PASS、2組を順番にHaLow AP/STA接続して各UDP 20/20往復成功。
-ESP32内蔵2.4 GHz Wi-Fiは使用していません。P0-Aの長時間運転・起動反復・自動復帰などは未完了です。
-[試験結果](docs/bringup/halow-link-retest-2026-09-19.md)と[残課題の整理](docs/bringup/p0-a-open-items-2026-09-19.md)を参照してください。
+2026-09-19時点: 3組のSPI診断に加え、両STAのDHCP通信と3台同時通信を確認しました。
+software restart時の不具合を修正し、AP/STA再起動各3回・APサービス再開3回の自動復帰、1/2 MHz各3回の有限通信を実証しています。
+追加負荷は両幅で約82 kbit/s、3台同時では両STAの交互再起動中も相手の通信が継続しました。最終状態は3台とも無線停止です。
+ESP32内蔵Wi-Fiは使用していません。8時間運転、実電源断50回、電源計測、現物受入の未確認分が残り、P0-A全体は未完了です。
+[当日実証結果](docs/bringup/p0-a-validation-report-2026-09-19.md)、[残課題](docs/bringup/p0-a-open-items-2026-09-19.md)、[計測器・電源治具の準備](docs/bringup/p0-a-equipment-followups-2026-09-19.md)を参照してください。
 
 以下は2026-09-06時点の履歴:
 
