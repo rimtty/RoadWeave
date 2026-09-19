@@ -101,6 +101,11 @@ bins and round down; `RW_LINK_ECHO_MATCH` carries each exact RTT for host
 percentile calculations. Rate-control `rc_sent_start/end` and
 `rc_success_start/end` are raw SDK counters, not a retry metric; SNR is `NA`
 because this wrapper does not expose a validated SNR measurement.
+The duplicate counter recognizes another reply to the most recently matched
+sequence; older delayed replies count as stale (`late`). A successful
+`RW_LINK_RADIO_RESULT` and LED mean the run completed with at least one valid
+echo; `RW_LINK_RUN_END quality_gate=host` marks that quality gates are applied
+by the host report.
 
 The STA remains enabled across a link drop, letting the pinned Morse supplicant
 reconnect. After a previously working link stops answering, the first matching

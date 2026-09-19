@@ -177,7 +177,7 @@ static void print_sta_stats(const char *kind, const struct run_stats *s,
            " reconnects=%" PRIu32
            " rtt_p50_us=%" PRIu32 " rtt_p95_us=%" PRIu32 " rtt_p99_us=%" PRIu32
            " rtt_max_us=%" PRIu32 " offered_bps=%" PRIu64 " useful_bps=%" PRIu64
-           " heap_free=%u heap_min=%u rssi_dbm=%" PRId32 " snr_db=NA",
+           " heap_free=%u heap_min=%u",
            kind, CONFIG_RW_LINK_STA_ID, elapsed_us / 1000,
            s->planned, s->sent, s->received, s->sent - s->received,
            s->send_fail, s->skipped, s->duplicates, s->late, s->invalid, s->reconnects,
@@ -185,12 +185,15 @@ static void print_sta_stats(const char *kind, const struct run_stats *s,
            s->rtt_max_us, s->offered_bytes * 8000000ULL / elapsed_us,
            s->useful_bytes * 8000000ULL / elapsed_us,
            (unsigned)esp_get_free_heap_size(),
-           (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT), rssi);
-    if (rc_start.available && rc_end.available) {
-        printf(" rc_sent_start=%" PRIu64 " rc_sent_end=%" PRIu64
-               " rc_success_start=%" PRIu64 " rc_success_end=%" PRIu64,
-               rc_start.sent, rc_end.sent, rc_start.success, rc_end.success);
-    } else printf(" rc_sent_start=NA rc_sent_end=NA rc_success_start=NA rc_success_end=NA");
+           (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT));
+    if (rssi == INT32_MIN) printf(" rssi_dbm=NA snr_db=NA");
+    else printf(" rssi_dbm=%" PRId32 " snr_db=NA", rssi);
+    if (rc_start.available) printf(" rc_sent_start=%" PRIu64 " rc_success_start=%" PRIu64,
+                                   rc_start.sent, rc_start.success);
+    else printf(" rc_sent_start=NA rc_success_start=NA");
+    if (rc_end.available) printf(" rc_sent_end=%" PRIu64 " rc_success_end=%" PRIu64,
+                                 rc_end.sent, rc_end.success);
+    else printf(" rc_sent_end=NA rc_success_end=NA");
     printf("\n");
 }
 
@@ -243,6 +246,7 @@ bool run_validation_sta(void)
     static struct run_stats stats;
     memset(&stats, 0, sizeof(stats));
     struct rc_counters rc_start = read_rc();
+    bool execution_ok = true;
     int64_t begin = esp_timer_get_time();
     int64_t end = begin + (int64_t)CONFIG_RW_LINK_RUN_SECONDS * 1000000;
     int64_t next = begin;
@@ -268,7 +272,8 @@ bool run_validation_sta(void)
             record_outage(&stats, "link_down");
         } else {
             uint8_t tx[CONFIG_RW_LINK_PAYLOAD_BYTES];
-            uint8_t rx[CONFIG_RW_LINK_PAYLOAD_BYTES];
+            /* One extra byte detects UDP truncation of an oversized echo. */
+            uint8_t rx[CONFIG_RW_LINK_PAYLOAD_BYTES + 1];
             struct packet_header header = {
                 htonl(VALIDATION_MAGIC), htonl(nonce),
                 htonl(stats.planned), htonl(CONFIG_RW_LINK_STA_ID)
@@ -288,6 +293,8 @@ bool run_validation_sta(void)
                     int n = recv(fd, rx, sizeof(rx), 0);
                     if (n < 0) {
                         if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) continue;
+                        printf("RW_LINK_SOCKET_ERROR phase=sta_recv errno=%d\n", errno);
+                        execution_ok = false;
                         break;
                     }
                     if (n < (int)sizeof(header)) { stats.invalid++; continue; }
@@ -308,12 +315,14 @@ bool run_validation_sta(void)
                         printf("RW_LINK_ECHO_DUPLICATE seq=%" PRIu32 "\n", rx_seq);
                     } else stats.late++;
                 }
+                if (!execution_ok) break;
                 if (!matched) {
                     printf("RW_LINK_TIMEOUT seq=%" PRIu32 "\n", stats.planned);
                     record_outage(&stats, "probe_timeout");
                 }
             }
         }
+        if (!execution_ok) break;
         now = esp_timer_get_time();
         while (next <= now && next < end &&
                (!CONFIG_RW_LINK_MAX_PROBES || stats.planned < CONFIG_RW_LINK_MAX_PROBES)) {
@@ -327,11 +336,12 @@ bool run_validation_sta(void)
         }
     }
     print_sta_stats("SUMMARY", &stats, begin, rc_start);
-    printf("RW_LINK_RUN_END role=STA run_id=%08" PRIx32 "\n", nonce);
+    printf("RW_LINK_RUN_END role=STA run_id=%08" PRIx32
+           " execution_ok=%d quality_gate=host\n", nonce, execution_ok);
     stop_reader();
     close(fd);
     /* Quality gates (loss/latency/recovery) are evaluated from the summary. */
-    return stats.received > 0;
+    return execution_ok && stats.received > 0;
 }
 
 struct ap_stats {
@@ -355,11 +365,12 @@ static void print_ap_stats(const char *kind, const struct ap_stats *s, int64_t b
            s->invalid, s->send_fail, s->echoed_bytes * 8000000ULL / elapsed_us,
            (unsigned)esp_get_free_heap_size(),
            (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT));
-    if (rc_start.available && rc_end.available) {
-        printf(" rc_sent_start=%" PRIu64 " rc_sent_end=%" PRIu64
-               " rc_success_start=%" PRIu64 " rc_success_end=%" PRIu64,
-               rc_start.sent, rc_end.sent, rc_start.success, rc_end.success);
-    } else printf(" rc_sent_start=NA rc_sent_end=NA rc_success_start=NA rc_success_end=NA");
+    if (rc_start.available) printf(" rc_sent_start=%" PRIu64 " rc_success_start=%" PRIu64,
+                                   rc_start.sent, rc_start.success);
+    else printf(" rc_sent_start=NA rc_success_start=NA");
+    if (rc_end.available) printf(" rc_sent_end=%" PRIu64 " rc_success_end=%" PRIu64,
+                                 rc_end.sent, rc_end.success);
+    else printf(" rc_sent_end=NA rc_success_end=NA");
     printf("\n");
 }
 
@@ -403,11 +414,13 @@ bool run_validation_ap(const struct mmwlan_ap_args *ap)
             printf("RW_LINK_AP_READY ip=192.168.50.1 port=%d window_s=%d\n",
                    VALIDATION_PORT, (int)((end - esp_timer_get_time()) / 1000000));
         }
-        uint8_t buffer[1024];
+        uint8_t buffer[1025];
         struct sockaddr_in peer = {0};
         socklen_t peer_len = sizeof(peer);
         int n = recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr *)&peer, &peer_len);
-        if (n >= (int)sizeof(struct packet_header)) {
+        if (n > 1024) {
+            stats.invalid++;
+        } else if (n >= (int)sizeof(struct packet_header)) {
             struct packet_header header;
             memcpy(&header, buffer, sizeof(header));
             uint32_t id = ntohl(header.id);
@@ -433,7 +446,8 @@ bool run_validation_ap(const struct mmwlan_ap_args *ap)
         }
     }
     print_ap_stats("SUMMARY", &stats, begin, rc_start);
-    printf("RW_LINK_RUN_END role=AP run_id=%08" PRIx32 "\n", run_id);
+    printf("RW_LINK_RUN_END role=AP run_id=%08" PRIx32
+           " execution_ok=%d quality_gate=host\n", run_id, execution_ok);
     stop_reader();
     close(fd);
     return execution_ok && stats.echoed[1] + stats.echoed[2] > 0;
