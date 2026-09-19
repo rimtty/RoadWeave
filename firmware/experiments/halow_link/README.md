@@ -151,6 +151,60 @@ during that wrapper's netif creation, keeping the same wrapper-owned RX and
 link callbacks. It does not start the ESP32's internal Wi-Fi. Disabling
 `RW_LINK_DHCP` retains the earlier fixed-address behavior and legacy test.
 
+## Finite UDP throughput mode
+
+Enable `RW_LINK_THROUGHPUT` alongside `RW_LINK_CONTINUOUS` and
+`RW_LINK_DHCP` to replace the echo workload with serial-controlled,
+one-way UDP throughput stages. Both roles can send and receive. This mode
+uses the same radio, DHCP, IRQ cleanup, and shutdown paths. Its separate
+`RW_TPUT_SESSION_SECONDS` deadline defaults to 1800 seconds; a host
+`RW_TPUT_CMD STOP` ends it earlier and completes normal radio shutdown.
+The earlier `RW_LINK_CMD STOP` is also accepted. The pinned SDK's INFO
+logging is reduced to WARN only in throughput builds to avoid per-packet
+console work changing the measured rate.
+
+After both devices report `RW_TPUT_READY role=... ip=...`, use the
+reported IPs. For each unique, increasing stage ID, first send to the
+receiver:
+
+```text
+RW_TPUT_CMD ARM stage=1 peer=192.168.50.2 duration_s=30 packet_bytes=1200
+```
+
+Wait for `RW_TPUT_RX_READY stage=1`, then send to the sender:
+
+```text
+RW_TPUT_CMD SEND stage=1 peer=192.168.50.1 duration_s=30 rate_kbps=1000 packet_bytes=1200
+```
+
+`rate_kbps=0` runs unpaced; both device roles support both commands. A
+five-second warmup uses a distinct stage ID. After `RW_TPUT_TX_SUMMARY`,
+send `RW_TPUT_CMD DRAIN stage=1 sent=<TX summary sent>` to the receiver.
+The receiver counts three additional seconds and prints
+`RW_TPUT_RX_SUMMARY`. `RW_TPUT_CMD ABORT stage=1` ends a stalled stage.
+The host should retain each device's full serial log and require both
+session-end, radio-shutdown, and DONE markers.
+
+The maximum `packet_bytes` is 1200 **for the whole UDP datagram**,
+including the bench's 16-byte header. The 1184-byte body is checked
+byte-for-byte with a deterministic sequence-dependent pattern. A bounded
+262144-sequence bitmap counts exact unique packets, duplicates, invalid
+payloads, wrong stages/peers, overflow, and out-of-order arrival. The
+sender's sequence advances only after a successful `send()`. A one-time
+START/ACK precedes data; END/ACK follows it. Control packets never count
+as throughput bytes. The receiver counts packets after END separately
+as `late_unique`; `drain_unique` is the subset received after the host
+DRAIN command. Receiver `active_unique` and `active_body_bytes` describe
+the measured window, while `all_unique` includes late delivery for loss
+accounting. The host computes goodput over the larger of actual TX
+data-phase duration and RX first-to-last active span. Occasional one-tick
+yields in the sender/receiver hot loops allow ESP-IDF idle/WDT tasks to run;
+this load is part of the reported bench workload.
+
+This measures observed, verified UDP goodput for the chosen channel,
+bandwidth, placement, hardware, and stage settings. It does not by itself
+measure a theoretical PHY maximum or sustained TCP application throughput.
+
 ## User LED
 
 The [XIAO ESP32S3 user LED](https://wiki.seeedstudio.com/xiao-esp32s3-freertos/)

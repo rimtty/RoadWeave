@@ -8,6 +8,9 @@ bool run_radio_test(void);
 struct mmwlan_ap_args;
 bool run_validation_ap(const struct mmwlan_ap_args *ap);
 bool run_validation_sta(void);
+#ifdef CONFIG_RW_LINK_THROUGHPUT
+bool run_throughput(void);
+#endif
 bool validation_link_ready(void);
 bool validation_sta_ip(char *out, size_t out_len);
 bool validation_ap_netif_up(void);
