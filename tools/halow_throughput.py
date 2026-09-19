@@ -13,8 +13,8 @@ ALLOWED = {
     "RW_TPUT_ARM_ACK", "RW_TPUT_RX_READY",
     "RW_TPUT_RX_START", "RW_TPUT_RX_SAMPLE", "RW_TPUT_RX_END",
     "RW_TPUT_RX_DRAIN",
-    "RW_TPUT_RX_SUMMARY", "RW_TPUT_SEND_ACK", "RW_TPUT_TX_START",
-    "RW_TPUT_TX_SAMPLE", "RW_TPUT_TX_END", "RW_TPUT_TX_SUMMARY",
+    "RW_TPUT_RX_SUMMARY", "RW_TPUT_RX_DIAG", "RW_TPUT_SEND_ACK", "RW_TPUT_TX_START",
+    "RW_TPUT_TX_SAMPLE", "RW_TPUT_TX_END", "RW_TPUT_TX_SUMMARY", "RW_TPUT_TX_DIAG",
     "RW_TPUT_CMD_ACK", "RW_TPUT_STAGE_ABORT", "RW_TPUT_SESSION_ABORT",
     "RW_TPUT_SOCKET_ERROR", "RW_TPUT_SEND_ERROR", "RW_TPUT_CMD_REJECT",
 }
@@ -31,6 +31,11 @@ SAFE_FIELDS = {
     "end_us", "first_active_us", "last_active_us", "active_span_us",
     "drain_start_us", "drain_end_us", "elapsed_us", "elapsed_ms", "error",
     "reason", "command", "errno", "phase", "value",
+    "fill_us", "send_us", "send_max_us", "send_over_1ms", "send_over_10ms",
+    "pace_wait_us", "pace_waits", "pace_late_us", "pace_late_max_us",
+    "loop_yield_us", "recv_us", "recv_max_us", "recv_timeouts",
+    "process_us", "process_max_us", "verify_us", "verify_max_us",
+    "verify_packets",
 }
 
 

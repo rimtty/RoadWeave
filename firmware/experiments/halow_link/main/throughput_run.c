@@ -68,6 +68,15 @@ struct tput_command {
 };
 
 struct rx_stats {
+    uint64_t recv_us;
+    uint64_t process_us;
+    uint64_t verify_us;
+    uint64_t loop_yield_us;
+    uint32_t recv_max_us;
+    uint32_t process_max_us;
+    uint32_t verify_max_us;
+    uint32_t recv_timeouts;
+    uint32_t verify_packets;
     uint32_t active_unique;
     uint32_t late_unique;
     uint32_t drain_unique;
@@ -93,6 +102,16 @@ struct rx_stats {
 };
 
 struct tx_stats {
+    uint64_t fill_us;
+    uint64_t send_us;
+    uint64_t pace_wait_us;
+    uint64_t pace_late_us;
+    uint64_t loop_yield_us;
+    uint32_t send_max_us;
+    uint32_t send_over_1ms;
+    uint32_t send_over_10ms;
+    uint32_t pace_waits;
+    uint32_t pace_late_max_us;
     uint32_t attempts;
     uint32_t sent;
     uint32_t send_fail;
@@ -355,6 +374,16 @@ static void rx_summary(const struct tput_command *command, const struct rx_stats
            stats->last_active_us, span, stats->drain_start_us,
            stats->drain_end_us, stats->aborted);
     flush_control_log();
+    printf("RW_TPUT_RX_DIAG stage=%" PRIu32 " recv_us=%" PRIu64
+           " recv_max_us=%" PRIu32 " recv_timeouts=%" PRIu32
+           " process_us=%" PRIu64 " process_max_us=%" PRIu32
+           " verify_us=%" PRIu64 " verify_max_us=%" PRIu32
+           " verify_packets=%" PRIu32 " loop_yield_us=%" PRIu64 "\n",
+           command->stage, stats->recv_us, stats->recv_max_us,
+           stats->recv_timeouts, stats->process_us, stats->process_max_us,
+           stats->verify_us, stats->verify_max_us,
+           stats->verify_packets, stats->loop_yield_us);
+    flush_control_log();
 }
 
 static enum stage_result receive_stage(const struct tput_command *command,
@@ -450,10 +479,16 @@ static enum stage_result receive_stage(const struct tput_command *command,
         }
         struct sockaddr_in source = {0};
         socklen_t source_len = sizeof(source);
+        int64_t recv_begin = esp_timer_get_time();
         int n = recvfrom(fd, packet, TPUT_MAX_PACKET + 1, 0,
                          (struct sockaddr *)&source, &source_len);
         now = esp_timer_get_time();
+        int64_t process_begin = now;
+        uint32_t recv_elapsed = (uint32_t)(now - recv_begin);
+        stats.recv_us += recv_elapsed;
+        if (recv_elapsed > stats.recv_max_us) stats.recv_max_us = recv_elapsed;
         if (n < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) stats.recv_timeouts++;
             if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
                 printf("RW_TPUT_SOCKET_ERROR phase=rx_recv errno=%d\n", errno);
                 stats.aborted = true;
@@ -509,36 +544,49 @@ static enum stage_result receive_stage(const struct tput_command *command,
                     stats.overflow++;
                 } else if (stats.end_seen && seq >= stats.end_sent) {
                     stats.invalid++;
-                } else if (!data_valid(packet, command->packet_bytes, command->stage, seq)) {
-                    stats.invalid++;
                 } else {
-                    uint8_t mask = (uint8_t)(1U << (seq & 7));
-                    uint8_t *byte = &bitmap[seq >> 3];
-                    if (*byte & mask) {
-                        stats.duplicate++;
+                    int64_t verify_begin = esp_timer_get_time();
+                    bool valid = data_valid(packet, command->packet_bytes, command->stage, seq);
+                    uint32_t verify_elapsed = (uint32_t)(esp_timer_get_time() - verify_begin);
+                    stats.verify_us += verify_elapsed;
+                    stats.verify_packets++;
+                    if (verify_elapsed > stats.verify_max_us) stats.verify_max_us = verify_elapsed;
+                    if (!valid) {
+                        stats.invalid++;
                     } else {
-                        *byte |= mask;
-                        if (seq < stats.high_seq && !stats.drain_command) stats.out_of_order++;
-                        if (seq >= stats.high_seq && !stats.drain_command) stats.high_seq = seq + 1;
-                        if (stats.end_seen || stats.drain_command) {
-                            stats.late_unique++;
-                            if (stats.drain_command) stats.drain_unique++;
+                        uint8_t mask = (uint8_t)(1U << (seq & 7));
+                        uint8_t *byte = &bitmap[seq >> 3];
+                        if (*byte & mask) {
+                            stats.duplicate++;
                         } else {
-                            stats.active_unique++;
-                            if (!stats.first_active_us) stats.first_active_us = now;
-                            stats.last_active_us = now;
+                            *byte |= mask;
+                            if (seq < stats.high_seq && !stats.drain_command) stats.out_of_order++;
+                            if (seq >= stats.high_seq && !stats.drain_command) stats.high_seq = seq + 1;
+                            if (stats.end_seen || stats.drain_command) {
+                                stats.late_unique++;
+                                if (stats.drain_command) stats.drain_unique++;
+                            } else {
+                                stats.active_unique++;
+                                if (!stats.first_active_us) stats.first_active_us = now;
+                                stats.last_active_us = now;
+                            }
                         }
                     }
                 }
             }
         }
+        uint32_t process_elapsed = (uint32_t)(esp_timer_get_time() - process_begin);
+        stats.process_us += process_elapsed;
+        if (process_elapsed > stats.process_max_us) stats.process_max_us = process_elapsed;
         if (now >= sample_us) {
             rx_sample(command->stage, &stats, now);
             sample_us = now + TPUT_SAMPLE_US;
         }
         if (now - last_idle_yield >= 50000) {
+            int64_t yield_begin = esp_timer_get_time();
             vTaskDelay(pdMS_TO_TICKS(1));
             last_idle_yield = esp_timer_get_time();
+            stats.loop_yield_us += last_idle_yield - yield_begin;
         }
     }
     if (!stats.drain_end_us) stats.drain_end_us = esp_timer_get_time();
@@ -604,6 +652,17 @@ static void tx_summary(const struct tput_command *command, const struct tx_stats
            (uint64_t)stats->sent * body, stats->start_acked, stats->end_acked,
            stats->start_us, stats->end_us, duration, stats->aborted);
     flush_control_log();
+    printf("RW_TPUT_TX_DIAG stage=%" PRIu32 " fill_us=%" PRIu64
+           " send_us=%" PRIu64 " send_max_us=%" PRIu32
+           " send_over_1ms=%" PRIu32 " send_over_10ms=%" PRIu32
+           " pace_wait_us=%" PRIu64 " pace_waits=%" PRIu32
+           " pace_late_us=%" PRIu64 " pace_late_max_us=%" PRIu32
+           " loop_yield_us=%" PRIu64 "\n",
+           command->stage, stats->fill_us, stats->send_us, stats->send_max_us,
+           stats->send_over_1ms, stats->send_over_10ms,
+           stats->pace_wait_us, stats->pace_waits, stats->pace_late_us,
+           stats->pace_late_max_us, stats->loop_yield_us);
+    flush_control_log();
 }
 
 static enum stage_result send_stage(const struct tput_command *command,
@@ -668,9 +727,17 @@ static enum stage_result send_stage(const struct tput_command *command,
         int64_t now = esp_timer_get_time();
         if (period_us && now < next_send) {
             int64_t remaining = next_send - now;
+            int64_t wait_begin = now;
             if (remaining >= 2000) vTaskDelay(pdMS_TO_TICKS(1));
             else taskYIELD();
+            stats.pace_wait_us += esp_timer_get_time() - wait_begin;
+            stats.pace_waits++;
             continue;
+        }
+        if (period_us && now > next_send) {
+            uint32_t late = (uint32_t)(now - next_send);
+            stats.pace_late_us += late;
+            if (late > stats.pace_late_max_us) stats.pace_late_max_us = late;
         }
         if (stats.sent >= TPUT_MAX_SEQ) {
             stats.aborted = true;
@@ -679,8 +746,16 @@ static enum stage_result send_stage(const struct tput_command *command,
         }
         int64_t attempt_us = now;
         fill_data(packet, command->packet_bytes, command->stage, stats.sent);
+        int64_t fill_end = esp_timer_get_time();
+        stats.fill_us += fill_end - attempt_us;
         stats.attempts++;
         int n = send(fd, packet, command->packet_bytes, 0);
+        int64_t send_end = esp_timer_get_time();
+        uint32_t send_elapsed = (uint32_t)(send_end - fill_end);
+        stats.send_us += send_elapsed;
+        if (send_elapsed > stats.send_max_us) stats.send_max_us = send_elapsed;
+        if (send_elapsed >= 1000) stats.send_over_1ms++;
+        if (send_elapsed >= 10000) stats.send_over_10ms++;
         if (n == command->packet_bytes) {
             stats.sent++;
         } else {
@@ -697,8 +772,10 @@ static enum stage_result send_stage(const struct tput_command *command,
             ? attempt_us + period_us : now;
         /* taskYIELD alone does not run lower-priority IDLE/WDT tasks. */
         if (now - last_idle_yield >= 50000) {
+            int64_t yield_begin = esp_timer_get_time();
             vTaskDelay(pdMS_TO_TICKS(1));
             last_idle_yield = esp_timer_get_time();
+            stats.loop_yield_us += last_idle_yield - yield_begin;
         }
         if (now >= sample_us) {
             tx_sample(command->stage, &stats, now);
@@ -735,6 +812,18 @@ bool run_throughput(void)
         vTaskDelay(pdMS_TO_TICKS(100));
     if (!ip[0]) {
         printf("RW_TPUT_SESSION_ABORT reason=ip_timeout\n");
+        return false;
+    }
+    int64_t channel_deadline = esp_timer_get_time() + 3000000LL;
+    bool channel_ready = false;
+    do {
+        channel_ready = validation_report_operating_channel();
+        if (channel_ready) break;
+        vTaskDelay(pdMS_TO_TICKS(100));
+    } while (esp_timer_get_time() < channel_deadline);
+    if (!channel_ready) {
+        printf("RW_TPUT_SESSION_ABORT reason=operating_channel_unverified\n");
+        flush_control_log();
         return false;
     }
     command_queue = xQueueCreate(8, sizeof(struct tput_command));
