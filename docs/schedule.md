@@ -13,6 +13,7 @@ software restartで見つかったGPIO割り込みwatchdogを修正し、AP/STA�
 現物受入の未確認分もあり、P0-A全体は未完了。3台同時通信は追加試験として区別する。
 
 - [当日実証結果](bringup/p0-a-validation-report-2026-09-19.md)
+- [UDP最大転送速度の実測](bringup/p0-a-throughput-report-2026-09-19.md)
 - [計測器・電源治具の準備](bringup/p0-a-equipment-followups-2026-09-19.md)
 - [残課題・判定基準・次の実行順](bringup/p0-a-open-items-2026-09-19.md)
 

@@ -1,0 +1,62 @@
+{"kind": "host_inventory", "role": "ap", "iso_time": "2026-09-19T11:27:57.198+00:00", "monotonic_s": 16675.093, "port": "COM4", "mac": "44:B1:76:B0:57:20"}
+{"kind": "host_inventory", "role": "sta", "iso_time": "2026-09-19T11:27:57.198+00:00", "monotonic_s": 16675.093, "port": "COM5", "mac": "44:B1:76:B0:57:1C"}
+{"kind": "host_reset", "role": "ap", "iso_time": "2026-09-19T11:27:57.198+00:00", "monotonic_s": 16675.093, "action": "serial_reset"}
+{"kind": "firmware", "role": "sta", "iso_time": "2026-09-19T11:27:59.012+00:00", "monotonic_s": 16676.906, "marker": "RW_LINK_STA_STATE", "fields": {"value": "0"}}
+{"kind": "firmware", "role": "ap", "iso_time": "2026-09-19T11:27:59.153+00:00", "monotonic_s": 16677.046, "marker": "RW_LINK_IRQ_QUIESCED", "fields": {"gpio": "3"}}
+{"kind": "firmware", "role": "ap", "iso_time": "2026-09-19T11:27:59.156+00:00", "monotonic_s": 16677.062, "marker": "RW_LINK_BOOT", "fields": {"boot_id": "bd0fe3a7", "reset_reason": "11"}}
+{"kind": "warning", "role": "ap", "iso_time": "2026-09-19T11:27:59.199+00:00", "monotonic_s": 16677.093, "code": "address_base_set_failed", "boot_index": 1, "raw_line": 86}
+{"kind": "warning", "role": "ap", "iso_time": "2026-09-19T11:27:59.662+00:00", "monotonic_s": 16677.562, "code": "unknown_tlv", "boot_index": 1, "raw_line": 87}
+{"kind": "firmware", "role": "ap", "iso_time": "2026-09-19T11:27:59.783+00:00", "monotonic_s": 16677.687, "marker": "RW_LINK_CHANNEL", "fields": {"freq_hz": "903500000", "bw_mhz": "1", "status": "0"}}
+{"kind": "warning", "role": "ap", "iso_time": "2026-09-19T11:27:59.783+00:00", "monotonic_s": 16677.687, "code": "address_base_set_failed", "boot_index": 1, "raw_line": 103}
+{"kind": "warning", "role": "ap", "iso_time": "2026-09-19T11:28:00.337+00:00", "monotonic_s": 16678.234, "code": "unknown_tlv", "boot_index": 1, "raw_line": 104}
+{"kind": "firmware", "role": "ap", "iso_time": "2026-09-19T11:28:00.337+00:00", "monotonic_s": 16678.234, "marker": "RW_LINK_RADIO_CONFIG", "fields": {"country": "US", "channel": "3", "opclass": "1", "max_tx_dbm": "1"}}
+{"kind": "firmware", "role": "ap", "iso_time": "2026-09-19T11:28:00.900+00:00", "monotonic_s": 16678.796, "marker": "RW_LINK_DHCP_SERVER", "fields": {"value": "STARTED"}}
+{"kind": "firmware", "role": "ap", "iso_time": "2026-09-19T11:28:00.900+00:00", "monotonic_s": 16678.796, "marker": "RW_TPUT_SESSION_START", "fields": {"role": "AP", "id": "0", "ip": "192.168.50.1", "port": "3334", "session_s": "1800", "t_us": "2884786", "sdk_log": "WARN"}}
+{"kind": "firmware", "role": "ap", "iso_time": "2026-09-19T11:28:00.900+00:00", "monotonic_s": 16678.796, "marker": "RW_LINK_AP_READY", "fields": {"ip": "192.168.50.1", "port": "3334", "window_s": "1800"}}
+{"kind": "firmware", "role": "ap", "iso_time": "2026-09-19T11:28:00.900+00:00", "monotonic_s": 16678.796, "marker": "RW_TPUT_READY", "fields": {"role": "AP", "ip": "192.168.50.1", "port": "3334", "t_us": "2884786"}}
+{"kind": "host_reset", "role": "sta", "iso_time": "2026-09-19T11:28:00.900+00:00", "monotonic_s": 16678.796, "action": "serial_reset"}
+{"kind": "host", "iso_time": "2026-09-19T11:28:00.911+00:00", "monotonic_s": 16678.812, "action": "sta_started_after_ap_ready"}
+{"kind": "firmware", "role": "sta", "iso_time": "2026-09-19T11:28:02.952+00:00", "monotonic_s": 16680.859, "marker": "RW_LINK_IRQ_QUIESCED", "fields": {"gpio": "3"}}
+{"kind": "firmware", "role": "sta", "iso_time": "2026-09-19T11:28:02.952+00:00", "monotonic_s": 16680.859, "marker": "RW_LINK_BOOT", "fields": {"boot_id": "011afd47", "reset_reason": "11"}}
+{"kind": "warning", "role": "sta", "iso_time": "2026-09-19T11:28:02.952+00:00", "monotonic_s": 16680.859, "code": "address_base_set_failed", "boot_index": 1, "raw_line": 97}
+{"kind": "warning", "role": "sta", "iso_time": "2026-09-19T11:28:03.444+00:00", "monotonic_s": 16681.343, "code": "unknown_tlv", "boot_index": 1, "raw_line": 98}
+{"kind": "firmware", "role": "sta", "iso_time": "2026-09-19T11:28:03.444+00:00", "monotonic_s": 16681.343, "marker": "RW_LINK_CHANNEL", "fields": {"freq_hz": "903500000", "bw_mhz": "1", "status": "0"}}
+{"kind": "warning", "role": "sta", "iso_time": "2026-09-19T11:28:03.444+00:00", "monotonic_s": 16681.343, "code": "address_base_set_failed", "boot_index": 1, "raw_line": 114}
+{"kind": "warning", "role": "sta", "iso_time": "2026-09-19T11:28:03.995+00:00", "monotonic_s": 16681.89, "code": "unknown_tlv", "boot_index": 1, "raw_line": 115}
+{"kind": "firmware", "role": "sta", "iso_time": "2026-09-19T11:28:03.995+00:00", "monotonic_s": 16681.89, "marker": "RW_LINK_DHCP_CLIENT", "fields": {"status": "0", "value": "ENABLED"}}
+{"kind": "firmware", "role": "sta", "iso_time": "2026-09-19T11:28:03.995+00:00", "monotonic_s": 16681.89, "marker": "RW_LINK_RADIO_CONFIG", "fields": {"country": "US", "channel": "3", "opclass": "1", "max_tx_dbm": "1"}}
+{"kind": "firmware", "role": "sta", "iso_time": "2026-09-19T11:28:05.121+00:00", "monotonic_s": 16683.015, "marker": "RW_LINK_SCAN_TARGET", "fields": {"freq_hz": "903500000", "bw_mhz": "1", "op_bw_mhz": "1", "rssi_dbm": "-40", "noise_dbm": "-82", "scan_snr_db": "42", "scan_snr_status": "ok"}}
+{"kind": "firmware", "role": "sta", "iso_time": "2026-09-19T11:28:05.932+00:00", "monotonic_s": 16683.828, "marker": "RW_LINK_STA_STATE", "fields": {"value": "1"}}
+{"kind": "firmware", "role": "ap", "iso_time": "2026-09-19T11:28:06.364+00:00", "monotonic_s": 16684.265, "marker": "RW_LINK_AP_STA_STATE", "fields": {"aid": "1", "value": "2"}}
+{"kind": "firmware", "role": "ap", "iso_time": "2026-09-19T11:28:06.444+00:00", "monotonic_s": 16684.343, "marker": "RW_LINK_AP_STA_STATE", "fields": {"aid": "1", "value": "3"}}
+{"kind": "firmware", "role": "sta", "iso_time": "2026-09-19T11:28:06.444+00:00", "monotonic_s": 16684.343, "marker": "RW_LINK_STA_STATE", "fields": {"value": "2"}}
+{"kind": "firmware", "role": "ap", "iso_time": "2026-09-19T11:28:06.686+00:00", "monotonic_s": 16684.593, "marker": "RW_LINK_DHCP_LEASE", "fields": {"role": "AP", "ip": "192.168.50.2", "mac": "a8:dd:9f:4d:c1:ea", "t_ms": "8644"}}
+{"kind": "firmware", "role": "sta", "iso_time": "2026-09-19T11:28:07.718+00:00", "monotonic_s": 16685.625, "marker": "RW_LINK_DHCP_LEASE", "fields": {"role": "STA", "ip": "192.168.50.2", "gw": "192.168.50.1", "mask": "255.255.255.0", "acquire_ms": "1785", "t_ms": "5970"}}
+{"kind": "firmware", "role": "sta", "iso_time": "2026-09-19T11:28:07.718+00:00", "monotonic_s": 16685.625, "marker": "RW_TPUT_SESSION_START", "fields": {"role": "STA", "id": "1", "ip": "192.168.50.2", "port": "3334", "session_s": "1800", "t_us": "5982535", "sdk_log": "WARN"}}
+{"kind": "firmware", "role": "sta", "iso_time": "2026-09-19T11:28:07.718+00:00", "monotonic_s": 16685.625, "marker": "RW_TPUT_READY", "fields": {"role": "STA", "ip": "192.168.50.2", "port": "3334", "t_us": "5982535"}}
+{"kind": "host_stage", "iso_time": "2026-09-19T11:28:07.718+00:00", "monotonic_s": 16685.625, "stage": 1, "phase": "warmup", "rate_kbps": 128, "duration_s": 5, "sender": "sta", "receiver": "ap"}
+{"kind": "host_command", "role": "ap", "iso_time": "2026-09-19T11:28:07.718+00:00", "monotonic_s": 16685.625, "command": "ARM stage=1 peer=192.168.50.2 duration_s=5 packet_bytes=1200"}
+{"kind": "firmware", "role": "ap", "iso_time": "2026-09-19T11:28:07.940+00:00", "monotonic_s": 16685.843, "marker": "RW_TPUT_CMD_REJECT", "fields": {"reason": "too_long"}}
+{"kind": "firmware", "role": "ap", "iso_time": "2026-09-19T11:28:07.940+00:00", "monotonic_s": 16685.843, "marker": "RW_TPUT_CMD_REJECT", "fields": {"reason": "syntax_or_range"}}
+{"kind": "error", "iso_time": "2026-09-19T11:28:08.040+00:00", "monotonic_s": 16685.937, "message": "Capture or acceptance failure; retained in original private report."}
+{"kind": "host_command", "role": "sta", "iso_time": "2026-09-19T11:28:08.040+00:00", "monotonic_s": 16685.937, "command": "ABORT stage=1"}
+{"kind": "host_command", "role": "ap", "iso_time": "2026-09-19T11:28:08.040+00:00", "monotonic_s": 16685.937, "command": "ABORT stage=1"}
+{"kind": "host_command", "role": "sta", "iso_time": "2026-09-19T11:28:08.041+00:00", "monotonic_s": 16685.937, "command": "STOP"}
+{"kind": "host_command", "role": "ap", "iso_time": "2026-09-19T11:28:08.110+00:00", "monotonic_s": 16686.015, "command": "STOP"}
+{"kind": "firmware", "role": "sta", "iso_time": "2026-09-19T11:28:08.121+00:00", "monotonic_s": 16686.015, "marker": "RW_TPUT_CMD_REJECT", "fields": {"reason": "no_active_stage"}}
+{"kind": "firmware", "role": "sta", "iso_time": "2026-09-19T11:28:08.121+00:00", "monotonic_s": 16686.015, "marker": "RW_TPUT_CMD_ACK", "fields": {"command": "STOP"}}
+{"kind": "firmware", "role": "sta", "iso_time": "2026-09-19T11:28:08.121+00:00", "monotonic_s": 16686.015, "marker": "RW_TPUT_SESSION_END", "fields": {"role": "STA", "stages": "0", "all_stages_ok": "1", "stopped": "1", "elapsed_ms": "501"}}
+{"kind": "firmware", "role": "sta", "iso_time": "2026-09-19T11:28:08.121+00:00", "monotonic_s": 16686.015, "marker": "RW_LINK_STA_STATE", "fields": {"value": "0"}}
+{"kind": "firmware", "role": "ap", "iso_time": "2026-09-19T11:28:08.171+00:00", "monotonic_s": 16686.078, "marker": "RW_TPUT_CMD_REJECT", "fields": {"reason": "no_active_stage"}}
+{"kind": "firmware", "role": "ap", "iso_time": "2026-09-19T11:28:08.171+00:00", "monotonic_s": 16686.078, "marker": "RW_LINK_AP_STA_STATE", "fields": {"aid": "1", "value": "0"}}
+{"kind": "firmware", "role": "sta", "iso_time": "2026-09-19T11:28:08.171+00:00", "monotonic_s": 16686.078, "marker": "RW_LINK_RADIO_SHUTDOWN", "fields": {}}
+{"kind": "firmware", "role": "sta", "iso_time": "2026-09-19T11:28:08.171+00:00", "monotonic_s": 16686.078, "marker": "RW_LINK_RADIO_RESULT", "fields": {"value": "FAIL"}}
+{"kind": "firmware", "role": "sta", "iso_time": "2026-09-19T11:28:08.171+00:00", "monotonic_s": 16686.078, "marker": "RW_LINK_DONE", "fields": {}}
+{"kind": "firmware", "role": "ap", "iso_time": "2026-09-19T11:28:08.222+00:00", "monotonic_s": 16686.125, "marker": "RW_TPUT_CMD_ACK", "fields": {"command": "STOP"}}
+{"kind": "firmware", "role": "ap", "iso_time": "2026-09-19T11:28:08.272+00:00", "monotonic_s": 16686.171, "marker": "RW_TPUT_SESSION_END", "fields": {"role": "AP", "stages": "0", "all_stages_ok": "1", "stopped": "1", "elapsed_ms": "7401"}}
+{"kind": "firmware", "role": "ap", "iso_time": "2026-09-19T11:28:08.272+00:00", "monotonic_s": 16686.171, "marker": "RW_LINK_DHCP_SERVER", "fields": {"value": "STOPPED"}}
+{"kind": "firmware", "role": "ap", "iso_time": "2026-09-19T11:28:08.423+00:00", "monotonic_s": 16686.328, "marker": "RW_LINK_RADIO_SHUTDOWN", "fields": {}}
+{"kind": "firmware", "role": "ap", "iso_time": "2026-09-19T11:28:08.423+00:00", "monotonic_s": 16686.328, "marker": "RW_LINK_RADIO_RESULT", "fields": {"value": "FAIL"}}
+{"kind": "firmware", "role": "ap", "iso_time": "2026-09-19T11:28:08.423+00:00", "monotonic_s": 16686.328, "marker": "RW_LINK_DONE", "fields": {}}
+{"kind": "error", "iso_time": "2026-09-19T11:28:33.177+00:00", "monotonic_s": 16711.078, "message": "Capture or acceptance failure; retained in original private report."}
+{"kind": "error", "iso_time": "2026-09-19T11:28:33.177+00:00", "monotonic_s": 16711.078, "message": "Capture or acceptance failure; retained in original private report."}

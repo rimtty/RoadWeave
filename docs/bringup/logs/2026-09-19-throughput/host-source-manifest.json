@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "initial_uncommitted_smoke_snapshot": {
+    "case": "smoke-1mhz-sta-to-ap",
+    "files": [
+      {
+        "file": "halow_throughput_run.py",
+        "sha256": "8ce0bbe261e7ae2da93ed075a66d9e738877428fd0e294c351620a4491c38b52"
+      },
+      {
+        "file": "halow_throughput.py",
+        "sha256": "f1ce2964e9d6c939ce20321ae6628926175214a737df77c05e082b207faff78b"
+      },
+      {
+        "file": "halow_validation_run.py",
+        "sha256": "2340ff134792108d41a9b6f99b6a5c882176fed380b5deda2640fddcbad6340b"
+      },
+      {
+        "file": "halow_validation.py",
+        "sha256": "d20de8bb14a556143f7d16b3c1b3b2e6216511ab0be27df22b56e051f986a561"
+      }
+    ]
+  },
+  "final_measurements": {
+    "commit": "5a12d4dddf3cbe4675819fd9f96c584a967f123d",
+    "files": [
+      {
+        "file": "tools/halow_throughput.py",
+        "git_blob_sha256": "f1ce2964e9d6c939ce20321ae6628926175214a737df77c05e082b207faff78b"
+      },
+      {
+        "file": "tools/halow_throughput_run.py",
+        "git_blob_sha256": "909fd9e6a46c5033535c7e547fb7cc0fc9e5d1cb200827dff808c28b7131c0aa"
+      },
+      {
+        "file": "tools/halow_validation.py",
+        "git_blob_sha256": "2d8d8f0b9bb675cfe1b46ae8b913785b3a67f7827a55c3cabf3846a4f9969682"
+      },
+      {
+        "file": "tools/halow_validation_run.py",
+        "git_blob_sha256": "2b3e50a1aa3201f82af9ad75e134e05914c86d45a0b79ea18c663767396a97c4"
+      }
+    ]
+  }
+}
