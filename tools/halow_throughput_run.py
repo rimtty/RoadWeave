@@ -90,13 +90,16 @@ class ThroughputRunner(Runner):
 
     def _wait(self, role: str, marker: str, *, stage=None, timeout: float) -> dict:
         start = self.clock()
-        while self.clock() < min(start + timeout, self.deadline or float("inf")):
-            self.poll()
+        end = min(start + timeout, self.deadline or float("inf"))
+        while True:
             self._fatal()
             found = [e for e in self._rows(role, marker, stage)
-                     if e.get("monotonic_s", -1) >= start]
+                     if stage is not None or e.get("monotonic_s", -1) >= start]
             if found:
                 return found[-1]
+            if self.clock() >= end:
+                break
+            self.poll()
             self.sleep(.02)
         raise TimeoutError(f"{role}: no {marker} stage={stage} within {timeout}s")
 

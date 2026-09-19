@@ -121,6 +121,23 @@ class ThroughputTests(unittest.TestCase):
 
 
 class SearchTests(unittest.TestCase):
+    def test_stage_wait_reuses_summary_captured_with_drain_ack(self):
+        events = [
+            {"kind": "firmware", "role": "ap", "marker": "RW_TPUT_CMD_ACK",
+             "fields": {"stage": "7", "command": "DRAIN"}, "monotonic_s": 10},
+            {"kind": "firmware", "role": "ap", "marker": "RW_TPUT_RX_SUMMARY",
+             "fields": {"stage": "7", "all_unique": "400"}, "monotonic_s": 10},
+        ]
+        runner = ThroughputRunner({}, {}, direction="sta_to_ap", startup_timeout=5,
+                                  max_seconds=100, warmup_seconds=5, stage_seconds=5,
+                                  repeat_seconds=5, rates=(128,), events=events)
+        runner.deadline = runner.clock() + 100
+        runner.poll = lambda: self.fail("already captured stage marker should not poll again")
+        ack = runner._wait("ap", "RW_TPUT_CMD_ACK", stage=7, timeout=5)
+        summary = runner._wait("ap", "RW_TPUT_RX_SUMMARY", stage=7, timeout=15)
+        self.assertEqual(ack["fields"]["command"], "DRAIN")
+        self.assertEqual(summary["fields"]["all_unique"], "400")
+
     def test_measure_waits_for_drain_ack_then_bounded_summary(self):
         class Controlled(ThroughputRunner):
             def _send(self, role, payload):
