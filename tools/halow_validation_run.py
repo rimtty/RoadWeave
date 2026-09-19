@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Bounded two-port HaLow capture, software faults, and strict report.
+"""Bounded two- or three-port HaLow capture, software faults, and strict report.
 
-Run COM4/AP with exactly one of COM5 or COM6/STA. The runner never powers a
+Run COM4/AP with COM5 or COM6; optionally run both stations together. It never powers a
 device off or credits a serial/firmware reset as a physical cold boot.
 """
 
@@ -47,14 +47,37 @@ def emit(events: list[dict], clock, kind: str, **fields) -> dict:
     return item
 
 
+class EventJournal(list):
+    """Flush each event so an interrupted capture retains host fault evidence."""
+
+    def __init__(self, path: Path):
+        super().__init__()
+        self.path = path
+        self.stream = path.open("w", encoding="utf-8", newline="\n")
+
+    def append(self, item: dict) -> None:
+        super().append(item)
+        self.stream.write(json.dumps(item, ensure_ascii=False) + "\n")
+        self.stream.flush()
+
+    def finalize(self) -> None:
+        # Fault ACK updates mutate their original event in memory. Rewrite once
+        # after capture, atomically, while the flushed journal remains intact.
+        self.stream.close()
+        temporary = self.path.with_name(self.path.name + ".tmp")
+        temporary.write_text("".join(json.dumps(e, ensure_ascii=False) + "\n" for e in self),
+                             encoding="utf-8")
+        temporary.replace(self.path)
+
+
 def parse_fault(value: str) -> tuple[str, str, float]:
     try:
         role, action, at = value.split(":", 2)
         seconds = float(at)
     except ValueError as exc:
         raise argparse.ArgumentTypeError("fault format is ROLE:ACTION:SECONDS") from exc
-    if role not in {"ap", "sta"} or action not in {"software_reset", "ap_off_10s"}:
-        raise argparse.ArgumentTypeError("supported faults: ap/sta:software_reset or ap:ap_off_10s")
+    if role not in {"ap", "sta", "sta2"} or action not in {"software_reset", "ap_off_10s"}:
+        raise argparse.ArgumentTypeError("supported faults: ap/sta/sta2:software_reset or ap:ap_off_10s")
     if action == "ap_off_10s" and role != "ap":
         raise argparse.ArgumentTypeError("ap_off_10s is AP-only")
     if not math.isfinite(seconds) or seconds < 0:
@@ -70,13 +93,13 @@ def verify_device(serial_module, device: str) -> None:
         raise RuntimeError(f"{device} identity mismatch: expected {expected}, got {actual or 'missing'}")
 
 
-def verify_inventory(serial_module, ap: str, sta: str) -> None:
-    for device in (ap, sta):
+def verify_inventory(serial_module, *devices: str) -> None:
+    for device in devices:
         verify_device(serial_module, device)
 
 
 def open_port(serial_module, name: str, baud: int):
-    port = serial_module.Serial(port=None, baudrate=baud, timeout=0.1)
+    port = serial_module.Serial(port=None, baudrate=baud, timeout=0.1, write_timeout=2.0)
     port.dtr = False
     port.rts = False
     port.port = name
@@ -105,7 +128,8 @@ def git_state() -> dict:
 
 class Runner:
     def __init__(self, ports, raw_files, *, seconds, ap_ready_timeout, faults=(),
-                 clock=time.monotonic, sleep=time.sleep, initial_reset=None, reopen=None):
+                 clock=time.monotonic, sleep=time.sleep, initial_reset=None, reopen=None,
+                 events=None):
         self.ports = ports
         self.raw_files = raw_files
         self.seconds = seconds
@@ -115,7 +139,7 @@ class Runner:
         self.sleep = sleep
         self.initial_reset = initial_reset
         self.reopen = reopen
-        self.events: list[dict] = []
+        self.events: list[dict] = events if events is not None else []
         self.buffers = {role: b"" for role in ports}
         self.warning_counts = {role: {key: 0 for key in WARNING_PATTERNS} for role in ports}
         self.boot_index = {role: 0 for role in ports}
@@ -182,7 +206,14 @@ class Runner:
         command = "RESTART" if action == "software_reset" else "AP_OFF_10S"
         fault = emit(self.events, self.clock, "fault", role=role, action=action,
                      command=command, acknowledged=False)
-        self.ports[role].write(f"RW_LINK_CMD {command}\n".encode("ascii"))
+        payload = f"RW_LINK_CMD {command}\n".encode("ascii")
+        try:
+            written = self.ports[role].write(payload)
+            if written is not None and written != len(payload):
+                raise OSError(f"short serial write: {written}/{len(payload)} bytes")
+        except Exception as exc:
+            emit(self.events, self.clock, "error", message=f"{role}: {command} write failed: {exc}")
+            raise
         deadline = self.clock() + 5
         while self.clock() < deadline:
             self.poll()
@@ -212,10 +243,12 @@ class Runner:
             self.stop_and_drain()
             return self.events
         if self.initial_reset:
-            emit(self.events, self.clock, "host_reset", role="sta", action="serial_reset")
-            self.initial_reset(self.ports["sta"])
+            for role in ("sta", "sta2"):
+                if role in self.ports:
+                    emit(self.events, self.clock, "host_reset", role=role, action="serial_reset")
+                    self.initial_reset(self.ports[role])
         self.sta_started_at = self.clock()
-        emit(self.events, self.clock, "host", action="sta_started_after_ap_ready")
+        emit(self.events, self.clock, "host", action="stations_started_after_ap_ready")
         deadline = self.sta_started_at + self.seconds
         next_fault = 0
         while self.clock() < deadline:
@@ -250,12 +283,15 @@ class Runner:
     def stop_and_drain(self):
         # A role with a summary may already be in its shutdown path. It needs
         # time to print RESULT/SHUTDOWN/DONE rather than another STOP command.
-        for role in ("sta", "ap"):
+        for role in ("sta", "sta2", "ap"):
             if role not in self.ports or self._has_final_summary(role):
                 continue
             emit(self.events, self.clock, "host_stop", role=role, command="STOP")
             try:
-                self.ports[role].write(b"RW_LINK_CMD STOP\n")
+                payload = b"RW_LINK_CMD STOP\n"
+                written = self.ports[role].write(payload)
+                if written is not None and written != len(payload):
+                    raise OSError(f"short serial write: {written}/{len(payload)} bytes")
             except Exception as exc:
                 emit(self.events, self.clock, "error", message=f"{role}: STOP write failed: {exc}")
         stop_deadline = self.clock() + 20
@@ -274,6 +310,7 @@ class Runner:
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--sta", choices=("COM5", "COM6"), required=True)
+    p.add_argument("--sta2", choices=("COM6",), help="optional second STA (requires --sta COM5)")
     p.add_argument("--ap", choices=("COM4",), default="COM4")
     p.add_argument("--seconds", type=float, default=180)
     p.add_argument("--ap-ready-timeout", type=float, default=60)
@@ -284,15 +321,22 @@ def main() -> int:
     p.add_argument("--public-log", type=Path, help="optional allowlisted RW_LINK telemetry copy")
     p.add_argument("--ap-bin", type=Path)
     p.add_argument("--sta-bin", type=Path)
+    p.add_argument("--sta2-bin", type=Path)
     p.add_argument("--no-initial-reset", action="store_true")
     args = p.parse_args()
+    if args.sta2 and args.sta != "COM5":
+        p.error("--sta2 COM6 requires --sta COM5")
+    if args.sta2_bin and not args.sta2:
+        p.error("--sta2-bin requires --sta2 COM6")
+    if any(role == "sta2" for role, _, _ in args.fault) and not args.sta2:
+        p.error("sta2 faults require --sta2 COM6")
     if not math.isfinite(args.seconds) or args.seconds <= 0 or args.seconds > 3600:
         p.error("--seconds must be positive and at most 3600; this runner excludes the 8h soak")
     if not math.isfinite(args.ap_ready_timeout) or not 0 < args.ap_ready_timeout <= 300:
         p.error("--ap-ready-timeout must be 1..300 seconds")
     if any(at >= args.seconds for _, _, at in args.fault):
         p.error("fault offsets must be before the bounded run ends")
-    for binary in (args.ap_bin, args.sta_bin):
+    for binary in (args.ap_bin, args.sta_bin, args.sta2_bin):
         if binary is not None and not binary.is_file():
             p.error(f"binary for SHA256 does not exist: {binary}")
     if args.output_dir.exists() and any(args.output_dir.iterdir()):
@@ -300,15 +344,19 @@ def main() -> int:
     if ".private" not in args.output_dir.resolve().parts:
         p.error("--output-dir must be under a .private directory because it contains raw serial logs")
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    import serial
-    import serial.tools.list_ports
+    event_path = args.output_dir / "events.jsonl"
+    events = EventJournal(event_path)
     ports = {}
     streams = {}
-    events = []
     runner = None
     try:
-        verify_inventory(serial, args.ap, args.sta)
-        for role, name in (("ap", args.ap), ("sta", args.sta)):
+        import serial
+        import serial.tools.list_ports
+        devices = {"ap": args.ap, "sta": args.sta}
+        if args.sta2:
+            devices["sta2"] = args.sta2
+        verify_inventory(serial, *devices.values())
+        for role, name in devices.items():
             ports[role] = open_port(serial, name, args.baud)
             streams[role] = (args.output_dir / f"{role}-raw.log").open("wb")
         initial_reset = None
@@ -317,26 +365,41 @@ def main() -> int:
             initial_reset = lambda port: Reset(port, "esp32s3").hard()
         runner = Runner(ports, streams, seconds=args.seconds,
                         ap_ready_timeout=args.ap_ready_timeout, faults=args.fault,
+                        events=events,
                         initial_reset=initial_reset,
-                        reopen=lambda role: (verify_device(serial, args.ap if role == "ap" else args.sta),
-                                             open_port(serial, args.ap if role == "ap" else args.sta, args.baud))[1])
+                        reopen=lambda role: (verify_device(serial, devices[role]),
+                                             open_port(serial, devices[role], args.baud))[1])
+        for role, name in devices.items():
+            emit(runner.events, time.monotonic, "host_inventory", role=role,
+                 port=name, mac=EXPECTED[name])
         events = runner.run()
     except (Exception, KeyboardInterrupt) as exc:
         if runner is not None:
-            runner.stop_and_drain()
-            events = runner.events
+            try:
+                runner.stop_and_drain()
+            except (Exception, KeyboardInterrupt) as cleanup_exc:
+                emit(events, time.monotonic, "error",
+                     message=f"cleanup interrupted or failed: {type(cleanup_exc).__name__}: {cleanup_exc}")
         emit(events, time.monotonic, "error", message=f"capture interrupted or failed: {type(exc).__name__}: {exc}")
     finally:
         for stream in streams.values():
-            stream.close()
+            try:
+                stream.close()
+            except OSError as exc:
+                emit(events, time.monotonic, "error", message=f"raw log close failed: {exc}")
         for port in ports.values():
-            port.close()
-    event_path = args.output_dir / "events.jsonl"
-    event_path.write_text("".join(json.dumps(e, ensure_ascii=False) + "\n" for e in events), encoding="utf-8")
-    report = validation.apply_acceptance(validation.analyze(events), events)
+            try:
+                port.close()
+            except Exception as exc:
+                emit(events, time.monotonic, "error", message=f"serial close failed: {exc}")
+    events.finalize()
+    expected_roles = ("ap", "sta", "sta2") if args.sta2 else ("ap", "sta")
+    report = validation.apply_acceptance(validation.analyze(events, expected_roles), events)
     report["manifest"] = {
         "ap": {"port": args.ap, "mac": EXPECTED[args.ap], "binary_sha256": sha256(args.ap_bin)},
         "sta": {"port": args.sta, "mac": EXPECTED[args.sta], "binary_sha256": sha256(args.sta_bin)},
+        **({"sta2": {"port": args.sta2, "mac": EXPECTED[args.sta2],
+                    "binary_sha256": sha256(args.sta2_bin)}} if args.sta2 else {}),
         "host_git": git_state(), "bounded_seconds": args.seconds,
         "warning_counts": runner.warning_counts if runner else None,
         "warning_locations": [e for e in events if e.get("kind") == "warning"],
