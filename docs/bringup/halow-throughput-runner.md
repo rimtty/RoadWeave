@@ -23,9 +23,33 @@ under `.private` for every invocation:
 
 For the reverse direction, pass `--direction ap_to_sta` and a fresh output
 directory. Repeat both directions with the 2 MHz binaries and
-`--bandwidth-mhz 2`. The default finite policy warms up for 5 seconds, tests
-128/256/512/1000/2000/4000/8000 kbit/s for 30 seconds each until the first
-quality failure, refines the boundary with two midpoint tests, attempts three
+`--bandwidth-mhz 2`. For a future 4 or 8 MHz run, also provide an explicit
+positive `--channel` and `--opclass` selected from the pinned SDK's regulatory
+table and verified for the module and test location. Before the first UDP
+stage, the runner requires each radio's current-boot `RW_LINK_CHANNEL`
+(selected frequency, width, successful status), `RW_LINK_RADIO_CONFIG`
+(country, channel, class), and `RW_LINK_OPERATING_CHANNEL` (post-association
+frequency, channel, class, operating width, `status=connected`). Both sides
+must match the requested profile and country. Firmware without the operating
+channel marker cannot produce a passing 4/8 MHz run. A selected channel or
+STA scan target alone is insufficient evidence of
+the associated width. The runner records verified profile evidence in
+`report.json`; missing or conflicting evidence fails before load begins.
+Legacy 1/2 MHz invocations retain their previous evidence requirements.
+
+The firmware has a 262144-packet sequence bitmap per stage. The host rejects
+paced rate/duration combinations that would fill it. A 4/8 MHz full run also
+caps the unpaced saturation observation at 30 seconds; this bounds that
+observation and does not turn a bitmap limit into an RF performance result.
+
+The default finite policy warms up for 5 seconds, tests
+128/256/512/1000/2000/4000/8000 kbit/s for 1/2 MHz, then extends the
+4 MHz search to 12000/16000 kbit/s and the 8 MHz search to
+12000/16000/24000/32000 kbit/s. It runs 30 seconds per search stage. The
+1/2 MHz legacy search stops at its first quality failure; the 4/8 MHz search
+checks the complete fixed grid so isolated low-load loss cannot hide a higher
+passing rate. It refines the boundary above the highest passing grid point
+with two midpoint tests, attempts three
 60-second confirmations at the highest candidate and lower candidates if
 needed, then runs one unpaced saturation observation. The host caps its
 session at 1500 seconds; the firmware session watchdog is 1800 seconds.

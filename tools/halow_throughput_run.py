@@ -16,6 +16,65 @@ from halow_validation_run import (EXPECTED, EventJournal, Runner, emit, git_stat
                                   open_port, sha256, verify_inventory)
 
 DEFAULT_RATES = (128, 256, 512, 1000, 2000, 4000, 8000)
+WIDE_RATES = {
+    4: DEFAULT_RATES + (12000, 16000),
+    8: DEFAULT_RATES + (12000, 16000, 24000, 32000),
+}
+MAX_STAGE_SEQUENCE = 262144
+
+
+def check_stage_capacity(rate_kbps: int, seconds: int) -> None:
+    """Reject paced stages that could exhaust the firmware sequence bitmap."""
+    if rate_kbps > 0 and math.ceil(rate_kbps * 1000 * seconds / (1200 * 8)) >= MAX_STAGE_SEQUENCE:
+        raise ValueError("paced stage exceeds 262144-packet sequence capacity")
+
+
+def verify_radio_profile(events: list[dict], *, bandwidth_mhz: int,
+                         channel: int, opclass: int) -> dict:
+    """Require current-boot, connected AP/STA width evidence for wide runs.
+
+    The current firmware has selected-channel and scan logs but does not emit
+    RW_LINK_OPERATING_CHANNEL. A 4/8 MHz run therefore fails closed until a
+    firmware API can report the actual post-association operating channel.
+    """
+    evidence = {}
+    for role in ("ap", "sta"):
+        role_events = [e for e in events if e.get("role") == role]
+        resets = [e.get("monotonic_s", -1) for e in role_events
+                  if e.get("kind") == "host_reset"]
+        if not resets:
+            raise RuntimeError(f"{role}: no current host reset for radio profile")
+        since = resets[-1]
+        rows = [e for e in role_events if e.get("kind") == "firmware" and
+                e.get("monotonic_s", -1) >= since]
+        def one(marker):
+            matches = [e for e in rows if e.get("marker") == marker]
+            if len(matches) != 1:
+                raise RuntimeError(f"{role}: expected one current {marker}, found {len(matches)}")
+            return matches[0]
+        selected = one("RW_LINK_CHANNEL")
+        config = one("RW_LINK_RADIO_CONFIG")
+        operating = one("RW_LINK_OPERATING_CHANNEL")
+        sf, cf, of = (row.get("fields", {}) for row in (selected, config, operating))
+        if (throughput.count(sf, "bw_mhz") != bandwidth_mhz or
+                throughput.count(sf, "freq_hz") is None or
+                throughput.count(sf, "status") != 0 or
+                throughput.count(cf, "channel") != channel or
+                throughput.count(cf, "opclass") != opclass or
+                throughput.count(of, "channel") != channel or
+                throughput.count(of, "opclass") != opclass or
+                throughput.count(of, "bw_mhz") != bandwidth_mhz or
+                throughput.count(of, "freq_hz") != throughput.count(sf, "freq_hz") or
+                of.get("status") != "connected" or
+                not (selected.get("monotonic_s", -1) <=
+                     config.get("monotonic_s", -1) <= operating.get("monotonic_s", -1))):
+            raise RuntimeError(f"{role}: selected/configured/connected radio profile mismatch")
+        evidence[role] = {"selected": sf, "configured": cf, "operating": of}
+    if evidence["ap"]["configured"].get("country") != evidence["sta"]["configured"].get("country"):
+        raise RuntimeError("AP/STA country mismatch")
+    if not evidence["ap"]["configured"].get("country"):
+        raise RuntimeError("AP/STA country missing")
+    return evidence
 
 
 def command(port, payload: str, events: list[dict], clock, role: str) -> None:
@@ -30,6 +89,8 @@ class ThroughputRunner(Runner):
     def __init__(self, ports, raw_files, *, direction: str, startup_timeout: float,
                  max_seconds: float, warmup_seconds: int, stage_seconds: int,
                  repeat_seconds: int, rates: tuple[int, ...], smoke: bool = False,
+                 bandwidth_mhz: int = 1, channel: int | None = None,
+                 opclass: int | None = None,
                  initial_reset=None,
                  reopen=None, events=None, clock=time.monotonic, sleep=time.sleep):
         super().__init__(ports, raw_files, seconds=max_seconds,
@@ -43,6 +104,10 @@ class ThroughputRunner(Runner):
         self.repeat_seconds = repeat_seconds
         self.rates = rates
         self.smoke = smoke
+        self.bandwidth_mhz = bandwidth_mhz
+        self.channel = channel
+        self.opclass = opclass
+        self.radio_profile = None
         self.sender, self.receiver = (("sta", "ap") if direction == "sta_to_ap" else ("ap", "sta"))
         self.stage_number = 0
         self.stages: list[dict] = []
@@ -154,9 +219,14 @@ class ThroughputRunner(Runner):
                         if e.get("monotonic_s", -1) >= reset_at[role]]
             if len(sessions) != 1 or sessions[0].get("fields", {}).get("ip") != self.ips[role]:
                 raise RuntimeError(f"{role}: missing or mismatched managed throughput session")
+        if self.bandwidth_mhz in (4, 8):
+            self.radio_profile = verify_radio_profile(
+                self.events, bandwidth_mhz=self.bandwidth_mhz,
+                channel=self.channel, opclass=self.opclass)
         self.managed_start = self.clock()
 
     def measure(self, rate_kbps: int, seconds: int, phase: str) -> dict:
+        check_stage_capacity(rate_kbps, seconds)
         self.stage_number += 1
         stage = self.stage_number
         if self.clock() + seconds + 18 >= self.deadline:
@@ -200,21 +270,27 @@ class ThroughputRunner(Runner):
         self.measure(self.rates[0], self.warmup_seconds, "warmup")
         passing = []
         failure_rate = None
+        failed_rates = []
         for rate in self.rates:
             result = self.measure(rate, self.stage_seconds, "ramp")
             if result["sustainable"]:
                 passing.append(result)
             else:
-                failure_rate = rate
-                break
+                failed_rates.append(rate)
+                if failure_rate is None:
+                    failure_rate = rate
+                if self.bandwidth_mhz not in (4, 8):
+                    break
         if not passing:
             for rate in (64, 32):
                 result = self.measure(rate, self.stage_seconds, "lower_probe")
                 if result["sustainable"]:
                     passing.append(result)
                     break
-        if passing and failure_rate:
-            lower, upper = passing[-1]["target_kbps"], failure_rate
+        upper_failures = [rate for rate in failed_rates
+                          if passing and rate > passing[-1]["target_kbps"]]
+        if passing and upper_failures:
+            lower, upper = passing[-1]["target_kbps"], min(upper_failures)
             for _ in range(2):
                 midpoint = (lower + upper) // 2
                 if midpoint <= lower or midpoint >= upper:
@@ -238,7 +314,8 @@ class ThroughputRunner(Runner):
                 break
         saturation = None if self.smoke else self.measure(0, self.stage_seconds, "saturation")
         return {"confirmed": confirmed, "saturation": saturation,
-                "search_ceiling_reached": failure_rate is None,
+                "search_ceiling_reached": self.rates[-1] in {
+                    row["target_kbps"] for row in passing},
                 "first_failed_rate_kbps": failure_rate,
                 "confirmation_incomplete": confirmation_incomplete}
 
@@ -293,9 +370,13 @@ class ThroughputRunner(Runner):
 
 def markdown(report: dict) -> str:
     lines = [f"# HaLow UDP throughput: {report['status']}", "",
-             f"Direction: {report['direction']}; width: {report['bandwidth_mhz']} MHz.", "",
+             f"Direction: {report['direction']}; requested width: {report['bandwidth_mhz']} MHz.", "",
              "| Phase | Stage | Target kbit/s | Actual TX bit/s | Active body goodput bit/s | Active/final delivery | Sustainable |",
              "|---|---:|---:|---:|---:|---:|---|"]
+    if report.get("radio_profile"):
+        lines[4:4] = ["Verified AP/STA connected channel: "
+                      f"{report['channel']} (operating class {report['opclass']}); "
+                      f"width {report['bandwidth_mhz']} MHz.", ""]
     for row in report["stages"]:
         fmt = lambda value: "NA" if value is None else f"{value:,.0f}"
         ratio = lambda value: "NA" if value is None else f"{100*value:.2f}%"
@@ -319,7 +400,9 @@ def markdown(report: dict) -> str:
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--direction", choices=("sta_to_ap", "ap_to_sta"), required=True)
-    p.add_argument("--bandwidth-mhz", type=int, choices=(1, 2), required=True)
+    p.add_argument("--bandwidth-mhz", type=int, choices=(1, 2, 4, 8), required=True)
+    p.add_argument("--channel", type=int, help="required for 4/8 MHz; match both firmware profiles")
+    p.add_argument("--opclass", type=int, help="required for 4/8 MHz; match both firmware profiles")
     p.add_argument("--sta", choices=("COM5", "COM6"), required=True)
     p.add_argument("--ap", choices=("COM4",), default="COM4")
     p.add_argument("--output-dir", type=Path, required=True)
@@ -330,19 +413,33 @@ def main() -> int:
     p.add_argument("--warmup-seconds", type=int, default=5)
     p.add_argument("--stage-seconds", type=int, default=30)
     p.add_argument("--repeat-seconds", type=int, default=60)
-    p.add_argument("--rates-kbps", type=int, nargs="+", default=DEFAULT_RATES)
+    p.add_argument("--rates-kbps", type=int, nargs="+",
+                   help="ascending test rates; defaults extend to 16/32 Mbit/s for 4/8 MHz")
     p.add_argument("--smoke", action="store_true",
                    help="skip the unpaced stage and label outcome SMOKE_PASS")
     p.add_argument("--startup-timeout", type=float, default=90)
     p.add_argument("--max-seconds", type=float, default=1500)
     p.add_argument("--baud", type=int, default=115200)
     args = p.parse_args()
+    if args.rates_kbps is None:
+        args.rates_kbps = WIDE_RATES.get(args.bandwidth_mhz, DEFAULT_RATES)
+    if args.bandwidth_mhz in (4, 8) and (args.channel is None or args.channel <= 0 or
+                                          args.opclass is None or args.opclass <= 0):
+        p.error("4/8 MHz requires explicit positive --channel and --opclass")
     if not all(path.is_file() for path in (args.ap_bin, args.sta_bin)):
         p.error("both flashed firmware binaries must exist for SHA256 manifest")
     if any(n < 5 for n in (args.warmup_seconds, args.stage_seconds, args.repeat_seconds)):
         p.error("stage durations must be at least 5 s per firmware command contract")
     if not args.rates_kbps or any(n <= 0 for n in args.rates_kbps) or sorted(set(args.rates_kbps)) != list(args.rates_kbps):
         p.error("--rates-kbps must be unique positive values in ascending order")
+    if args.bandwidth_mhz in (4, 8) and not args.smoke and args.stage_seconds > 30:
+        p.error("4/8 MHz unpaced saturation observation is capped at 30 s")
+    try:
+        for rate in args.rates_kbps:
+            for seconds in (args.warmup_seconds, args.stage_seconds, args.repeat_seconds):
+                check_stage_capacity(rate, seconds)
+    except ValueError as exc:
+        p.error(str(exc))
     if not math.isfinite(args.max_seconds) or not 0 < args.max_seconds <= 1700:
         p.error("--max-seconds must be bounded within the 1800s firmware session")
     if args.output_dir.exists() and any(args.output_dir.iterdir()):
@@ -370,6 +467,8 @@ def main() -> int:
                                   stage_seconds=args.stage_seconds,
                                   repeat_seconds=args.repeat_seconds,
                                   rates=tuple(args.rates_kbps), smoke=args.smoke,
+                                  bandwidth_mhz=args.bandwidth_mhz,
+                                  channel=args.channel, opclass=args.opclass,
                                   initial_reset=lambda port: Reset(port, "esp32s3").hard(),
                                   reopen=lambda role: (verify_inventory(serial, devices[role]),
                                                        open_port(serial, devices[role], args.baud))[1],
@@ -420,6 +519,8 @@ def main() -> int:
         "status": ("SMOKE_PASS" if args.smoke else "PASS") if not errors and search.get("confirmed") else "FAIL",
         "mode": "smoke" if args.smoke else "full",
         "direction": args.direction, "bandwidth_mhz": args.bandwidth_mhz,
+        "channel": args.channel, "opclass": args.opclass,
+        "radio_profile": runner.radio_profile if runner is not None else None,
         "repeat_seconds": args.repeat_seconds,
         "stages": runner.stages if runner is not None else [],
         "confirmed": search.get("confirmed"),

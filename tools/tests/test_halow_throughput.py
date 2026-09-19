@@ -6,7 +6,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import halow_throughput as t
-from halow_throughput_run import ThroughputRunner, command, markdown
+from halow_throughput_run import (ThroughputRunner, WIDE_RATES, check_stage_capacity,
+                                  command, markdown, verify_radio_profile)
 
 
 def fw(role, marker, stage, **fields):
@@ -137,6 +138,41 @@ class ThroughputTests(unittest.TestCase):
 
 
 class SearchTests(unittest.TestCase):
+    def test_sequence_capacity_check_is_bounded(self):
+        check_stage_capacity(8000, 60)
+        self.assertGreater(max(WIDE_RATES[4]), 8000)
+        self.assertGreater(max(WIDE_RATES[8]), max(WIDE_RATES[4]))
+        check_stage_capacity(max(WIDE_RATES[8]), 60)
+        with self.assertRaisesRegex(ValueError, "sequence capacity"):
+            check_stage_capacity(50000, 60)
+
+    def test_wide_profile_requires_connected_evidence_from_both_roles(self):
+        events = []
+        for role in ("ap", "sta"):
+            events.append({"kind": "host_reset", "role": role, "monotonic_s": 1})
+            for marker, fields, when in (
+                ("RW_LINK_CHANNEL", {"freq_hz": "902000000", "bw_mhz": "4", "status": "0"}, 2),
+                ("RW_LINK_RADIO_CONFIG", {"country": "US", "channel": "5", "opclass": "7"}, 3),
+                ("RW_LINK_OPERATING_CHANNEL", {"freq_hz": "902000000", "bw_mhz": "4",
+                                               "channel": "5", "opclass": "7", "status": "connected"}, 4)):
+                events.append({"kind": "firmware", "role": role, "marker": marker,
+                               "fields": fields, "monotonic_s": when})
+        self.assertEqual(set(verify_radio_profile(events, bandwidth_mhz=4,
+                                                   channel=5, opclass=7)), {"ap", "sta"})
+        for mutation in ("missing", "wrong_width", "stale"):
+            with self.subTest(mutation=mutation):
+                changed = [{**e, "fields": dict(e.get("fields", {}))} for e in events]
+                op = next(e for e in changed if e.get("role") == "sta" and
+                          e.get("marker") == "RW_LINK_OPERATING_CHANNEL")
+                if mutation == "missing":
+                    changed.remove(op)
+                elif mutation == "wrong_width":
+                    op["fields"]["bw_mhz"] = "2"
+                else:
+                    op["monotonic_s"] = 0
+                with self.assertRaises(RuntimeError):
+                    verify_radio_profile(changed, bandwidth_mhz=4, channel=5, opclass=7)
+
     def test_stage_wait_reuses_summary_captured_with_drain_ack(self):
         events = [
             {"kind": "firmware", "role": "ap", "marker": "RW_TPUT_CMD_ACK",
@@ -205,7 +241,7 @@ class SearchTests(unittest.TestCase):
         events[-2]["fields"]["value"] = "PASS"
         self.assertEqual(runner._shutdown_evidence("ap"), (True, True))
 
-    def make_runner(self, *, repeat_fails=()):
+    def make_runner(self, *, repeat_fails=(), ramp_fails=(), bandwidth_mhz=1):
         class Clock:
             t = 0.
 
@@ -223,7 +259,8 @@ class SearchTests(unittest.TestCase):
                 self.stage_number += 1
                 self.sleep(seconds + 3)
                 sustainable = rate_kbps > 0 and rate_kbps <= 256 and not (
-                    phase == "confirm" and rate_kbps in repeat_fails)
+                    phase == "confirm" and rate_kbps in repeat_fails) and not (
+                    phase == "ramp" and rate_kbps in ramp_fails)
                 row = {"stage": self.stage_number, "phase": phase,
                        "target_kbps": rate_kbps, "valid": True,
                        "sustainable": sustainable,
@@ -235,7 +272,17 @@ class SearchTests(unittest.TestCase):
         return MockSearch({}, {}, direction="sta_to_ap", startup_timeout=5,
                           max_seconds=1000, warmup_seconds=5, stage_seconds=30,
                           repeat_seconds=60, rates=(128, 256, 512),
+                          bandwidth_mhz=bandwidth_mhz,
                           clock=clock, sleep=clock.sleep)
+
+    def test_wide_search_checks_above_an_initial_nonmonotonic_loss(self):
+        runner = self.make_runner(bandwidth_mhz=4, ramp_fails={128})
+        result = runner.run_search()
+        self.assertEqual([s["target_kbps"] for s in runner.stages if s["phase"] == "ramp"],
+                         [128, 256, 512])
+        self.assertEqual(result["first_failed_rate_kbps"], 128)
+        self.assertEqual(result["confirmed"]["target_kbps"], 256)
+        self.assertFalse(result["search_ceiling_reached"])
 
     def test_ramp_refines_then_confirms_three_times(self):
         runner = self.make_runner()
