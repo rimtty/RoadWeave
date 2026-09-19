@@ -115,6 +115,8 @@ PTT を押したままでも二度と要求しなかったこと。押してい�
 - jitter buffer underrun/overrun
 - RF retry、RSSI/SNR、airtime
 
+PTTから最初の再生までを共通クロックで測る治具・解析ツールは[6台音声遅延の測定準備](bringup/voice-latency-measurement.md)を参照。端末内の区間ログは別途実装し、異なる端末の時計を直接引き算しない。
+
 ## 8. Individual mute/volume
 
 mute/gainは受信側のlocal policyであり、相手へ状態を通知しなくても成立する。
