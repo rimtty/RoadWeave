@@ -36,14 +36,82 @@
 static EventGroupHandle_t events;
 static esp_netif_t *netif;
 static struct mmwlan_s1g_channel_list bench_channels;
+#ifdef CONFIG_RW_LINK_DHCP
+static uint32_t dhcp_wait_start_ms;
+#ifdef CONFIG_RW_LINK_AP
+static portMUX_TYPE lease_lock = portMUX_INITIALIZER_UNLOCKED;
+static struct { uint32_t ip; uint8_t mac[6]; } leases[2];
+static struct { bool present; uint8_t mac[6]; } authorized[2];
+#endif
+#endif
 #ifdef CONFIG_RW_LINK_CONTINUOUS
 bool validation_link_ready(void)
 {
     return (xEventGroupGetBits(events) & (LINK_BIT | IP_BIT)) == (LINK_BIT | IP_BIT);
 }
-void validation_ap_netif_up(void)
+bool validation_sta_ip(char *out, size_t out_len)
+{
+    esp_netif_ip_info_t info = {0};
+    if (!validation_link_ready() || esp_netif_get_ip_info(netif, &info) != ESP_OK ||
+        info.ip.addr == 0) return false;
+    return snprintf(out, out_len, IPSTR, IP2STR(&info.ip)) > 0;
+}
+bool validation_ap_netif_up(void)
 {
     esp_netif_action_connected(netif, NULL, 0, NULL);
+#if defined(CONFIG_RW_LINK_DHCP) && defined(CONFIG_RW_LINK_AP)
+    esp_err_t err = esp_netif_dhcps_start(netif);
+    esp_netif_dhcp_status_t status;
+    if ((err != ESP_OK && err != ESP_ERR_ESP_NETIF_DHCP_ALREADY_STARTED) ||
+        esp_netif_dhcps_get_status(netif, &status) != ESP_OK || status != ESP_NETIF_DHCP_STARTED) {
+        printf("RW_LINK_DHCP_SERVER=FAIL start_err=%d\n", err);
+        return false;
+    }
+    printf("RW_LINK_DHCP_SERVER=STARTED\n");
+#endif
+    return true;
+}
+bool validation_ap_netif_down(void)
+{
+#if defined(CONFIG_RW_LINK_DHCP) && defined(CONFIG_RW_LINK_AP)
+    esp_err_t err = esp_netif_dhcps_stop(netif);
+    if (err != ESP_OK && err != ESP_ERR_ESP_NETIF_DHCP_ALREADY_STOPPED) {
+        printf("RW_LINK_DHCP_SERVER=STOP_FAIL err=%d\n", err);
+        return false;
+    }
+    printf("RW_LINK_DHCP_SERVER=STOPPED\n");
+    taskENTER_CRITICAL(&lease_lock);
+    memset(authorized, 0, sizeof(authorized));
+    memset(leases, 0, sizeof(leases));
+    taskEXIT_CRITICAL(&lease_lock);
+#endif
+    esp_netif_action_disconnected(netif, NULL, 0, NULL);
+    return true;
+}
+bool validation_ap_lease_mac(uint32_t ip_addr, uint8_t mac[6])
+{
+#if defined(CONFIG_RW_LINK_DHCP) && defined(CONFIG_RW_LINK_AP)
+    bool found = false;
+    taskENTER_CRITICAL(&lease_lock);
+    for (unsigned i = 0; i < 2; ++i) {
+        if (leases[i].ip == ip_addr) {
+            for (unsigned j = 0; j < 2; ++j) {
+                if (authorized[j].present &&
+                    memcmp(authorized[j].mac, leases[i].mac, 6) == 0) {
+                    memcpy(mac, leases[i].mac, 6);
+                    found = true;
+                    break;
+                }
+            }
+            break;
+        }
+    }
+    taskEXIT_CRITICAL(&lease_lock);
+    return found;
+#else
+    (void)ip_addr; (void)mac;
+    return false;
+#endif
 }
 #endif
 
@@ -108,8 +176,43 @@ static void got_ip(void *arg, esp_event_base_t base, int32_t id, void *data)
     ip_event_got_ip_t *event = data;
     if (event->esp_netif != netif) return;
     printf("RW_LINK_IP=" IPSTR "\n", IP2STR(&event->ip_info.ip));
+#if defined(CONFIG_RW_LINK_DHCP) && defined(CONFIG_RW_LINK_STA)
+    printf("RW_LINK_DHCP_LEASE role=STA ip=" IPSTR " gw=" IPSTR " mask=" IPSTR
+           " acquire_ms=%" PRIu32 " t_ms=%" PRIu32 "\n", IP2STR(&event->ip_info.ip),
+           IP2STR(&event->ip_info.gw), IP2STR(&event->ip_info.netmask),
+           dhcp_wait_start_ms ? (uint32_t)(esp_timer_get_time() / 1000) - dhcp_wait_start_ms : 0,
+           (uint32_t)(esp_timer_get_time() / 1000));
+#endif
     xEventGroupSetBits(events, IP_BIT);
 }
+
+#if defined(CONFIG_RW_LINK_DHCP) && defined(CONFIG_RW_LINK_AP)
+static void ap_lease(void *arg, esp_event_base_t base, int32_t id, void *data)
+{
+    (void)arg; (void)base; (void)id;
+    ip_event_ap_staipassigned_t *event = data;
+    if (event->esp_netif != netif) return;
+    taskENTER_CRITICAL(&lease_lock);
+    unsigned slot = 2;
+    for (unsigned i = 0; i < 2; ++i) {
+        if (leases[i].ip == event->ip.addr ||
+            memcmp(leases[i].mac, event->mac, 6) == 0) { slot = i; break; }
+    }
+    if (slot == 2) {
+        for (unsigned i = 0; i < 2; ++i) {
+            if (leases[i].ip == 0) { slot = i; break; }
+        }
+    }
+    if (slot == 2) slot = 0;
+    leases[slot].ip = event->ip.addr;
+    memcpy(leases[slot].mac, event->mac, 6);
+    taskEXIT_CRITICAL(&lease_lock);
+    printf("RW_LINK_DHCP_LEASE role=AP ip=" IPSTR " mac=%02x:%02x:%02x:%02x:%02x:%02x t_ms=%" PRIu32 "\n",
+           IP2STR(&event->ip), event->mac[0], event->mac[1], event->mac[2],
+           event->mac[3], event->mac[4], event->mac[5],
+           (uint32_t)(esp_timer_get_time() / 1000));
+}
+#endif
 
 #ifndef CONFIG_RW_LINK_AP
 static void scan_rx(const struct mmwlan_scan_result *result, void *arg)
@@ -135,6 +238,9 @@ static void sta_status(enum mmwlan_sta_state state)
         status_led_set(RW_LED_CONNECTED);
     } else {
         xEventGroupClearBits(events, LINK_BIT | IP_BIT);
+#ifdef CONFIG_RW_LINK_DHCP
+        dhcp_wait_start_ms = (uint32_t)(esp_timer_get_time() / 1000);
+#endif
         status_led_set(RW_LED_WAIT);
     }
 }
@@ -143,11 +249,27 @@ static void ap_sta_status(const struct mmwlan_ap_sta_status *status, void *arg)
 {
     (void)arg;
     printf("RW_LINK_AP_STA_STATE=%d aid=%u\n", status->state, status->aid);
+#ifdef CONFIG_RW_LINK_DHCP
+    taskENTER_CRITICAL(&lease_lock);
+    unsigned slot = 2;
+    for (unsigned i = 0; i < 2; ++i) {
+        if (authorized[i].present &&
+            memcmp(authorized[i].mac, status->mac_addr, 6) == 0) { slot = i; break; }
+    }
+    if (status->state == MMWLAN_AP_STA_AUTHORIZED) {
+        if (slot == 2) slot = !authorized[0].present ? 0 : 1;
+        authorized[slot].present = true;
+        memcpy(authorized[slot].mac, status->mac_addr, 6);
+    } else if (slot != 2 && status->state == MMWLAN_AP_STA_UNKNOWN) {
+        authorized[slot].present = false;
+    }
+    taskEXIT_CRITICAL(&lease_lock);
+#endif
     status_led_set(status->state == MMWLAN_AP_STA_AUTHORIZED ? RW_LED_CONNECTED : RW_LED_WAIT);
 }
 #endif
 
-static bool set_static_ip(void)
+static bool configure_ip(void)
 {
     /* The pinned wrapper uses WIFI_STA_DEF for either role. Do not enable the
      * ESP32's internal 2.4 GHz Wi-Fi or rely on the official STA sample's fixed sleep. */
@@ -158,7 +280,18 @@ static bool set_static_ip(void)
         .transmit_wrap = bench_transmit_wrap, .driver_free_rx_buffer = bench_free_rx
     };
     if (esp_netif_set_driver_config(netif, &driver) != ESP_OK) return false;
-    esp_err_t ret = esp_netif_dhcpc_stop(netif);
+    esp_err_t ret;
+#if defined(CONFIG_RW_LINK_DHCP) && defined(CONFIG_RW_LINK_AP)
+    ret = esp_netif_dhcps_stop(netif);
+#elif defined(CONFIG_RW_LINK_DHCP) && defined(CONFIG_RW_LINK_STA)
+    esp_netif_dhcp_status_t status;
+    ret = esp_netif_dhcpc_get_status(netif, &status);
+    if (ret != ESP_OK || status == ESP_NETIF_DHCP_STOPPED) return false;
+    printf("RW_LINK_DHCP_CLIENT=ENABLED status=%d\n", status);
+    return true;
+#else
+    ret = esp_netif_dhcpc_stop(netif);
+#endif
     if (ret != ESP_OK && ret != ESP_ERR_ESP_NETIF_DHCP_ALREADY_STOPPED) return false;
     esp_netif_ip_info_t ip = {0};
 #ifdef CONFIG_RW_LINK_AP
@@ -277,8 +410,21 @@ bool run_radio_test(void)
     events = xEventGroupCreate();
     if (!events) return false;
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, got_ip, NULL));
+#if defined(CONFIG_RW_LINK_DHCP) && defined(CONFIG_RW_LINK_AP)
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_AP_STAIPASSIGNED, ap_lease, NULL));
+    validation_dhcp_wrap_begin();
+    esp_err_t init_result = mmhalow_init(NULL);
+    validation_dhcp_wrap_end();
+    ESP_ERROR_CHECK(init_result);
+#else
     ESP_ERROR_CHECK(mmhalow_init(NULL));
+#endif
     bool ok = false;
+#ifdef CONFIG_RW_LINK_AP
+    bool ap_started = false;
+#else
+    bool sta_started = false;
+#endif
     struct mmwlan_version version = {0};
     if (mmwlan_get_version(&version) != MMWLAN_SUCCESS || !version.morse_chip_id) goto done;
     /* mmhalow_init() boots a placeholder interface. Channel-list changes are
@@ -294,7 +440,7 @@ bool run_radio_test(void)
         printf("RW_LINK_POWER_OVERRIDE_FAIL=%d\n", power_status);
         goto done;
     }
-    if (!set_static_ip()) goto done;
+    if (!configure_ip()) goto done;
     printf("RW_LINK_RADIO_CONFIG country=%s channel=%d opclass=%d max_tx_dbm=%d psk=REDACTED\n",
            CONFIG_HALOW_COUNTRY_CODE, CONFIG_RW_LINK_CHANNEL, CONFIG_RW_LINK_OPCLASS, CONFIG_RW_LINK_TX_POWER_DBM);
 #ifdef CONFIG_RW_LINK_AP
@@ -318,18 +464,22 @@ bool run_radio_test(void)
         printf("RW_LINK_AP_START_FAIL=%d\n", ap_status);
         goto done;
     }
+    ap_started = true;
     uint8_t ap_mac[6];
     if (mmwlan_get_vif_mac_addr(MMWLAN_VIF_AP, ap_mac) != MMWLAN_SUCCESS ||
         esp_netif_set_mac(netif, ap_mac) != ESP_OK) goto done;
     printf("RW_LINK_AP_MAC=%02x:%02x:%02x:%02x:%02x:%02x\n",
            ap_mac[0], ap_mac[1], ap_mac[2], ap_mac[3], ap_mac[4], ap_mac[5]);
+#ifdef CONFIG_RW_LINK_CONTINUOUS
+    if (!validation_ap_netif_up()) goto done;
+#else
     esp_netif_action_connected(netif, NULL, 0, NULL);
+#endif
 #ifdef CONFIG_RW_LINK_CONTINUOUS
     ok = run_validation_ap(&ap);
 #else
     ok = echo_server();
 #endif
-    mmwlan_ap_disable();
 #else
     mmhalow_wifi_config_t sta = { .sta = MMWLAN_STA_ARGS_INIT };
     memcpy(sta.sta.ssid, CONFIG_RW_LINK_SSID, ssid_len);
@@ -340,9 +490,13 @@ bool run_radio_test(void)
     sta.sta.scan_rx_cb = scan_rx;
     sta.sta.sta_evt_cb = sta_event;
     ESP_ERROR_CHECK(mmhalow_set_config(WIFI_IF_STA, &sta));
+#ifdef CONFIG_RW_LINK_DHCP
+    dhcp_wait_start_ms = (uint32_t)(esp_timer_get_time() / 1000);
+#endif
     enum mmwlan_status sta_start = mmhalow_connect(sta_status);
     printf("RW_LINK_STA_START=%d\n", sta_start);
     if (sta_start != MMWLAN_SUCCESS) goto done;
+    sta_started = true;
 #ifdef CONFIG_RW_LINK_CONTINUOUS
     ok = run_validation_sta();
 #else
@@ -350,9 +504,18 @@ bool run_radio_test(void)
     if ((bits & (LINK_BIT | IP_BIT)) == (LINK_BIT | IP_BIT)) ok = udp_probes();
     else printf("RW_LINK_CONNECT_TIMEOUT bits=%u\n", (unsigned)bits);
 #endif
-    mmhalow_disconnect();
 #endif
 done:
+#ifdef CONFIG_RW_LINK_AP
+    if (ap_started) {
+#ifdef CONFIG_RW_LINK_CONTINUOUS
+        if (!validation_ap_netif_down()) ok = false;
+#endif
+        if (mmwlan_ap_disable() != MMWLAN_SUCCESS) ok = false;
+    }
+#else
+    if (sta_started && mmhalow_disconnect() != MMWLAN_SUCCESS) ok = false;
+#endif
     /* Keep event storage alive until reboot: the driver may have queued callbacks. */
     if (mmhalow_deinit() != MMWLAN_SUCCESS) ok = false;
     printf("RW_LINK_RADIO_SHUTDOWN\n");

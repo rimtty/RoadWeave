@@ -122,6 +122,24 @@ final summary and shuts down the radio. The AP outage is a controlled service
 interruption, not a calibrated RF propagation loss. Software reset is reported
 by `RW_LINK_BOOT reset_reason` and must not be counted as a cold power cycle.
 
+### DHCP option
+
+`RW_LINK_DHCP` is an opt-in setting for continuous mode. The AP retains
+`192.168.50.1/24` as its server address and provides leases to at most two
+associated STAs. Each STA obtains its address, gateway and mask through DHCP;
+it logs `RW_LINK_DHCP_LEASE role=STA` with acquisition time, then
+`RW_LINK_UDP_BIND` with the address actually used for probes. After link loss,
+the STA closes its UDP socket and binds a new one only after another IP event.
+There is no fixed-address fallback. The AP logs each lease's MAC/IP pair and
+logs `RW_LINK_AP_PEER` when a validated station ID first sends from that lease.
+It only echoes a packet when the lease MAC is currently authorized by HaLow.
+
+The pinned Morse wrapper creates a netif with a STA configuration even for AP
+mode. This experiment narrowly substitutes DHCP-server and AP-stack flags
+during that wrapper's netif creation, keeping the same wrapper-owned RX and
+link callbacks. It does not start the ESP32's internal Wi-Fi. Disabling
+`RW_LINK_DHCP` retains the earlier fixed-address behavior and legacy test.
+
 ## User LED
 
 The [XIAO ESP32S3 user LED](https://wiki.seeedstudio.com/xiao-esp32s3-freertos/)

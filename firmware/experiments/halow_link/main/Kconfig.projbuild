@@ -36,6 +36,10 @@ config RW_LINK_CONTINUOUS
     bool "Finite continuous UDP validation (legacy 20 probes when disabled)"
     default n
     depends on RW_LINK_RF_ENABLE
+config RW_LINK_DHCP
+    bool "Use AP DHCP server and STA DHCP client in continuous mode"
+    default n
+    depends on RW_LINK_CONTINUOUS
 config RW_LINK_RUN_SECONDS
     int "Continuous run duration in seconds"
     range 30 28800

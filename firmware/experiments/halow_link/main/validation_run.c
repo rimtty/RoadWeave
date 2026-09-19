@@ -138,6 +138,19 @@ static int open_udp(const char *ip, uint16_t port)
     return fd;
 }
 
+static int open_sta_udp(const char *local_ip)
+{
+    int fd = open_udp(local_ip, 0);
+    if (fd < 0) return -1;
+    struct sockaddr_in ap = { .sin_family = AF_INET, .sin_port = htons(VALIDATION_PORT) };
+    inet_pton(AF_INET, "192.168.50.1", &ap.sin_addr);
+    if (connect(fd, (struct sockaddr *)&ap, sizeof(ap)) != 0) {
+        close(fd);
+        return -1;
+    }
+    return fd;
+}
+
 static struct rc_counters read_rc(void)
 {
     struct rc_counters out = {0};
@@ -230,19 +243,19 @@ static void record_match(struct run_stats *s, uint32_t seq, uint32_t rtt_us)
 
 bool run_validation_sta(void)
 {
+#ifdef CONFIG_RW_LINK_DHCP
+    const char *local_ip = "DHCP";
+    int fd = -1;
+    char bound_ip[16] = {0};
+#else
     const char *local_ip = CONFIG_RW_LINK_STA_ID == 1 ? "192.168.50.2" : "192.168.50.3";
-    int fd = open_udp(local_ip, 0);
+    int fd = open_sta_udp(local_ip);
     if (fd < 0) {
         printf("RW_LINK_SOCKET_ERROR phase=sta_open errno=%d\n", errno);
         return false;
     }
-    struct sockaddr_in ap = { .sin_family = AF_INET, .sin_port = htons(VALIDATION_PORT) };
-    inet_pton(AF_INET, "192.168.50.1", &ap.sin_addr);
-    if (connect(fd, (struct sockaddr *)&ap, sizeof(ap)) != 0) {
-        close(fd);
-        return false;
-    }
-    if (!start_reader()) { close(fd); return false; }
+#endif
+    if (!start_reader()) { if (fd >= 0) close(fd); return false; }
     uint32_t nonce = esp_random();
     static struct run_stats stats;
     memset(&stats, 0, sizeof(stats));
@@ -268,9 +281,28 @@ bool run_validation_sta(void)
         }
         next += (int64_t)CONFIG_RW_LINK_INTERVAL_MS * 1000;
         stats.planned++;
+#ifdef CONFIG_RW_LINK_DHCP
+        char current_ip[16] = {0};
+        bool ready = validation_sta_ip(current_ip, sizeof(current_ip));
+        if (!ready && fd >= 0) {
+            close(fd);
+            fd = -1;
+            bound_ip[0] = '\0';
+        } else if (ready && (fd < 0 || strcmp(bound_ip, current_ip) != 0)) {
+            if (fd >= 0) close(fd);
+            fd = open_sta_udp(current_ip);
+            if (fd >= 0) {
+                strcpy(bound_ip, current_ip);
+                printf("RW_LINK_UDP_BIND role=STA ip=%s elapsed_ms=%" PRId64 "\n",
+                       bound_ip, (esp_timer_get_time() - begin) / 1000);
+            } else printf("RW_LINK_SOCKET_ERROR phase=sta_bind errno=%d\n", errno);
+        }
+        if (!ready || fd < 0) {
+#else
         if (!validation_link_ready()) {
+#endif
             stats.skipped++;
-            record_outage(&stats, "link_down");
+            record_outage(&stats, "link_or_ip_down");
         } else {
             uint8_t tx[CONFIG_RW_LINK_PAYLOAD_BYTES];
             /* One extra byte detects UDP truncation of an oversized echo. */
@@ -344,7 +376,7 @@ bool run_validation_sta(void)
     printf("RW_LINK_RUN_END role=STA run_id=%08" PRIx32
            " execution_ok=%d quality_gate=host\n", nonce, execution_ok);
     stop_reader();
-    close(fd);
+    if (fd >= 0) close(fd);
     /* Quality gates (loss/latency/recovery) are evaluated from the summary. */
     return execution_ok && stats.received > 0;
 }
@@ -354,6 +386,9 @@ struct ap_stats {
     uint32_t invalid;
     uint32_t send_fail;
     uint64_t echoed_bytes;
+    uint32_t peer_ip[3];
+    bool peer_seen[3];
+    uint8_t peer_mac[3][6];
 };
 
 static void print_ap_stats(const char *kind, const struct ap_stats *s, int64_t begin,
@@ -408,6 +443,7 @@ bool run_validation_ap(const struct mmwlan_ap_args *ap)
                 continue;
             }
             printf("RW_LINK_CMD_ACK command=AP_OFF_10S\n");
+            if (!validation_ap_netif_down()) { execution_ok = false; break; }
             enum mmwlan_status disabled = mmwlan_ap_disable();
             printf("RW_LINK_AP_SERVICE state=off status=%d\n", disabled);
             if (disabled != MMWLAN_SUCCESS) { execution_ok = false; break; }
@@ -415,7 +451,7 @@ bool run_validation_ap(const struct mmwlan_ap_args *ap)
             enum mmwlan_status enabled = mmwlan_ap_enable(ap);
             printf("RW_LINK_AP_SERVICE state=on status=%d\n", enabled);
             if (enabled != MMWLAN_SUCCESS) { execution_ok = false; break; }
-            validation_ap_netif_up();
+            if (!validation_ap_netif_up()) { execution_ok = false; break; }
             printf("RW_LINK_AP_READY ip=192.168.50.1 port=%d window_s=%d\n",
                    VALIDATION_PORT, (int)((end - esp_timer_get_time()) / 1000000));
         }
@@ -429,9 +465,29 @@ bool run_validation_ap(const struct mmwlan_ap_args *ap)
             struct packet_header header;
             memcpy(&header, buffer, sizeof(header));
             uint32_t id = ntohl(header.id);
-            uint32_t source = ntohl(peer.sin_addr.s_addr);
-            if (header.magic == htonl(VALIDATION_MAGIC) && id >= 1 && id <= 2 &&
-                source == 0xc0a83201U + id) {
+            bool source_ok = false;
+            if (header.magic == htonl(VALIDATION_MAGIC) && id >= 1 && id <= 2) {
+#ifdef CONFIG_RW_LINK_DHCP
+                uint8_t mac[6];
+                source_ok = validation_ap_lease_mac(peer.sin_addr.s_addr, mac) &&
+                            (!stats.peer_seen[id] ||
+                             memcmp(stats.peer_mac[id], mac, 6) == 0) &&
+                            (!stats.peer_seen[3 - id] ||
+                             memcmp(stats.peer_mac[3 - id], mac, 6) != 0);
+                if (source_ok && stats.peer_ip[id] != peer.sin_addr.s_addr) {
+                    char peer_ip[16];
+                    inet_ntop(AF_INET, &peer.sin_addr, peer_ip, sizeof(peer_ip));
+                    printf("RW_LINK_AP_PEER id=%" PRIu32 " ip=%s mac=%02x:%02x:%02x:%02x:%02x:%02x\n",
+                           id, peer_ip, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+                    stats.peer_ip[id] = peer.sin_addr.s_addr;
+                    stats.peer_seen[id] = true;
+                    memcpy(stats.peer_mac[id], mac, 6);
+                }
+#else
+                source_ok = ntohl(peer.sin_addr.s_addr) == 0xc0a83201U + id;
+#endif
+            }
+            if (source_ok) {
                 if (sendto(fd, buffer, n, 0, (struct sockaddr *)&peer, peer_len) == n) {
                     stats.echoed[id]++;
                     stats.echoed_bytes += n;
