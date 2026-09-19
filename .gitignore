@@ -5,6 +5,8 @@ sdkconfig.old
 managed_components/
 .tools/
 .private/
+__pycache__/
+*.pyc
 firmware/porting_assistant/
 *.kicad_prl
 *.kicad_sch-bak
