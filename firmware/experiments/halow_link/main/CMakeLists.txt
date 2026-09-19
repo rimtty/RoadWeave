@@ -1,5 +1,5 @@
 idf_component_register(
-    SRCS "app_main.c" "preflight.c" "radio_test.c" "status_led.c" "diagnostic_log.c" "board_compat.c" "vendor/sdio_spi.c"
+    SRCS "app_main.c" "preflight.c" "radio_test.c" "validation_run.c" "status_led.c" "diagnostic_log.c" "board_compat.c" "vendor/sdio_spi.c"
     INCLUDE_DIRS "." "vendor"
     REQUIRES halow esp_netif esp_event nvs_flash esp_timer esp_hw_support esp_psram
 )
