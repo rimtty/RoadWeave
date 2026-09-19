@@ -24,6 +24,7 @@ ALLOWED = {
     "RW_LINK_OUTAGE", "RW_LINK_AP_SERVICE", "RW_LINK_CMD_REJECT",
     "RW_LINK_DHCP_CLIENT", "RW_LINK_DHCP_SERVER", "RW_LINK_DHCP_LEASE",
     "RW_LINK_UDP_BIND", "RW_LINK_AP_PEER",
+    "RW_LINK_IRQ_QUIESCED", "RW_LINK_RESTART_READY", "RW_LINK_RESTART_ABORT",
 }
 SAFE_FIELDS = {
     "role", "boot_id", "run_id", "reset_reason", "ip", "port", "window_s",
@@ -40,6 +41,7 @@ SAFE_FIELDS = {
     "rtt_hist_bin_us", "execution_ok", "quality_gate",
     "acquire_ms", "t_ms", "gw", "mask", "mac", "start_err", "err",
     "noise_dbm", "op_bw_mhz", "scan_snr_db", "scan_snr_status",
+    "gpio", "radio_stopped",
 }
 
 
@@ -104,6 +106,9 @@ def analyze(events: list[dict], expected_roles=None) -> dict:
         inventory_roles = {e.get("role") for e in events if e.get("kind") == "host_inventory"}
         expected_roles = ("ap", "sta", "sta2") if "sta2" in inventory_roles else ("ap", "sta")
     errors: list[str] = []
+    for event in events:
+        if event.get("kind") == "firmware" and event.get("marker") == "RW_LINK_RESTART_ABORT":
+            errors.append(f"{event.get('role', 'device')}: firmware aborted software restart")
     roles = {}
     for role in expected_roles:
         row = [e for e in events if e.get("role") == role and e.get("kind") == "firmware"]

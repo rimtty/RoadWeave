@@ -91,6 +91,11 @@ by role, boot index and raw line; the former is a propagated transport error,
 while the latter is skipped during TLV parsing. Review their local context
 before classifying either. The optional public log includes allowlisted
 `RW_LINK_*` fields only and removes PSK/SSID. Check it before committing.
+Serial command writes time out after 2 s. `events.jsonl` is flushed after each
+event, so a forced termination still leaves host fault times and parsed serial
+evidence; an ACK that was not finalized may remain conservatively unacknowledged.
+An interrupted run without final summaries, shutdown markers, and `RW_LINK_DONE`
+cannot pass even if its raw logs contain echoes.
 Scan-time SNR is retained only when firmware reports valid RSSI and noise.
 `NA` stays unknown, and negative SNR is preserved. The UDP summary's
 `snr_db=NA` is not replaced with the scan-time value.

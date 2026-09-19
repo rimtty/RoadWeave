@@ -9,7 +9,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import halow_validation as v
-from halow_validation_run import Runner
+import halow_validation_run as v_run
+from halow_validation_run import EventJournal, Runner, open_port
 
 
 def fw(role, marker, t, **fields):
@@ -151,6 +152,13 @@ class ParserTests(unittest.TestCase):
         invalid = v.parse_line("RW_LINK_SCAN_TARGET rssi_dbm=-39 noise_dbm=0 scan_snr_db=NA scan_snr_status=out_of_range")
         self.assertEqual(invalid["fields"]["scan_snr_db"], "NA")
         self.assertEqual(invalid["fields"]["scan_snr_status"], "out_of_range")
+
+    def test_restart_cleanup_markers_and_abort_gate(self):
+        self.assertEqual(v.parse_line("RW_LINK_IRQ_QUIESCED gpio=4")["fields"]["gpio"], "4")
+        self.assertEqual(v.parse_line("RW_LINK_RESTART_READY radio_stopped=1")["fields"]["radio_stopped"], "1")
+        events = good_events()
+        events.append(fw("ap", "RW_LINK_RESTART_ABORT", 90, radio_stopped=0))
+        self.assertIn("ap: firmware aborted software restart", v.analyze(events)["errors"])
 
     def test_sta_reset_requires_fresh_boot_not_recovery_marker(self):
         events = good_events()
@@ -346,6 +354,71 @@ class FakePort:
 
 
 class RunnerTests(unittest.TestCase):
+    def test_serial_open_sets_bounded_write_timeout(self):
+        class SerialModule:
+            @staticmethod
+            def Serial(**kwargs):
+                self.assertEqual(kwargs["timeout"], .1)
+                self.assertEqual(kwargs["write_timeout"], 2.0)
+                return Port()
+
+        class Port:
+            def __init__(self):
+                self.dtr = self.rts = None
+                self.port = None
+                self.opened = False
+
+            def open(self):
+                self.opened = True
+
+        port = open_port(SerialModule, "COM4", 115200)
+        self.assertEqual((port.port, port.dtr, port.rts, port.opened),
+                         ("COM4", False, False, True))
+
+    def test_journal_keeps_events_before_final_report(self):
+        clock = FakeClock()
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "events.jsonl"
+            journal = EventJournal(path)
+            try:
+                fault = v_run.emit(journal, clock, "fault", role="ap",
+                                   action="software_reset", acknowledged=False)
+                self.assertEqual(v.load_events(path)[0]["kind"], "fault")
+                fault["acknowledged"] = True
+                journal.finalize()
+                self.assertTrue(v.load_events(path)[0]["acknowledged"])
+            finally:
+                if not journal.stream.closed:
+                    journal.stream.close()
+
+    def test_fault_write_failure_is_recorded_and_cleanup_continues(self):
+        class TimedOutPort(FakePort):
+            def write(self, data):
+                if b"RESTART" in data or b"STOP" in data:
+                    raise TimeoutError("write timed out")
+                return super().write(data)
+
+        clock = FakeClock()
+        ports = {"ap": TimedOutPort(), "sta": FakePort()}
+        with tempfile.TemporaryDirectory() as d:
+            files = {r: (Path(d) / f"{r}.log").open("wb") for r in ports}
+            try:
+                runner = Runner(ports, files, seconds=1, ap_ready_timeout=.1,
+                                clock=clock, sleep=clock.sleep)
+                with self.assertRaisesRegex(TimeoutError, "write timed out"):
+                    runner._command("ap", "software_reset")
+                runner.stop_and_drain()
+            finally:
+                for stream in files.values():
+                    stream.close()
+        self.assertTrue(any(e.get("kind") == "fault" and not e["acknowledged"]
+                            for e in runner.events))
+        self.assertTrue(any(e.get("kind") == "error" and "RESTART write failed" in e["message"]
+                            for e in runner.events))
+        self.assertTrue(any(e.get("kind") == "error" and "STOP write failed" in e["message"]
+                            for e in runner.events))
+        self.assertIn(b"RW_LINK_CMD STOP\n", ports["sta"].writes)
+
     def test_ap_gate_prevents_sta_start_on_timeout(self):
         clock = FakeClock()
         ports = {"ap": FakePort(), "sta": FakePort()}

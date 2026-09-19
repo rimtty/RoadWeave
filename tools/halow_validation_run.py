@@ -47,6 +47,29 @@ def emit(events: list[dict], clock, kind: str, **fields) -> dict:
     return item
 
 
+class EventJournal(list):
+    """Flush each event so an interrupted capture retains host fault evidence."""
+
+    def __init__(self, path: Path):
+        super().__init__()
+        self.path = path
+        self.stream = path.open("w", encoding="utf-8", newline="\n")
+
+    def append(self, item: dict) -> None:
+        super().append(item)
+        self.stream.write(json.dumps(item, ensure_ascii=False) + "\n")
+        self.stream.flush()
+
+    def finalize(self) -> None:
+        # Fault ACK updates mutate their original event in memory. Rewrite once
+        # after capture, atomically, while the flushed journal remains intact.
+        self.stream.close()
+        temporary = self.path.with_name(self.path.name + ".tmp")
+        temporary.write_text("".join(json.dumps(e, ensure_ascii=False) + "\n" for e in self),
+                             encoding="utf-8")
+        temporary.replace(self.path)
+
+
 def parse_fault(value: str) -> tuple[str, str, float]:
     try:
         role, action, at = value.split(":", 2)
@@ -76,7 +99,7 @@ def verify_inventory(serial_module, *devices: str) -> None:
 
 
 def open_port(serial_module, name: str, baud: int):
-    port = serial_module.Serial(port=None, baudrate=baud, timeout=0.1)
+    port = serial_module.Serial(port=None, baudrate=baud, timeout=0.1, write_timeout=2.0)
     port.dtr = False
     port.rts = False
     port.port = name
@@ -105,7 +128,8 @@ def git_state() -> dict:
 
 class Runner:
     def __init__(self, ports, raw_files, *, seconds, ap_ready_timeout, faults=(),
-                 clock=time.monotonic, sleep=time.sleep, initial_reset=None, reopen=None):
+                 clock=time.monotonic, sleep=time.sleep, initial_reset=None, reopen=None,
+                 events=None):
         self.ports = ports
         self.raw_files = raw_files
         self.seconds = seconds
@@ -115,7 +139,7 @@ class Runner:
         self.sleep = sleep
         self.initial_reset = initial_reset
         self.reopen = reopen
-        self.events: list[dict] = []
+        self.events: list[dict] = events if events is not None else []
         self.buffers = {role: b"" for role in ports}
         self.warning_counts = {role: {key: 0 for key in WARNING_PATTERNS} for role in ports}
         self.boot_index = {role: 0 for role in ports}
@@ -182,7 +206,14 @@ class Runner:
         command = "RESTART" if action == "software_reset" else "AP_OFF_10S"
         fault = emit(self.events, self.clock, "fault", role=role, action=action,
                      command=command, acknowledged=False)
-        self.ports[role].write(f"RW_LINK_CMD {command}\n".encode("ascii"))
+        payload = f"RW_LINK_CMD {command}\n".encode("ascii")
+        try:
+            written = self.ports[role].write(payload)
+            if written is not None and written != len(payload):
+                raise OSError(f"short serial write: {written}/{len(payload)} bytes")
+        except Exception as exc:
+            emit(self.events, self.clock, "error", message=f"{role}: {command} write failed: {exc}")
+            raise
         deadline = self.clock() + 5
         while self.clock() < deadline:
             self.poll()
@@ -257,7 +288,10 @@ class Runner:
                 continue
             emit(self.events, self.clock, "host_stop", role=role, command="STOP")
             try:
-                self.ports[role].write(b"RW_LINK_CMD STOP\n")
+                payload = b"RW_LINK_CMD STOP\n"
+                written = self.ports[role].write(payload)
+                if written is not None and written != len(payload):
+                    raise OSError(f"short serial write: {written}/{len(payload)} bytes")
             except Exception as exc:
                 emit(self.events, self.clock, "error", message=f"{role}: STOP write failed: {exc}")
         stop_deadline = self.clock() + 20
@@ -310,13 +344,14 @@ def main() -> int:
     if ".private" not in args.output_dir.resolve().parts:
         p.error("--output-dir must be under a .private directory because it contains raw serial logs")
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    import serial
-    import serial.tools.list_ports
+    event_path = args.output_dir / "events.jsonl"
+    events = EventJournal(event_path)
     ports = {}
     streams = {}
-    events = []
     runner = None
     try:
+        import serial
+        import serial.tools.list_ports
         devices = {"ap": args.ap, "sta": args.sta}
         if args.sta2:
             devices["sta2"] = args.sta2
@@ -330,6 +365,7 @@ def main() -> int:
             initial_reset = lambda port: Reset(port, "esp32s3").hard()
         runner = Runner(ports, streams, seconds=args.seconds,
                         ap_ready_timeout=args.ap_ready_timeout, faults=args.fault,
+                        events=events,
                         initial_reset=initial_reset,
                         reopen=lambda role: (verify_device(serial, devices[role]),
                                              open_port(serial, devices[role], args.baud))[1])
@@ -339,16 +375,24 @@ def main() -> int:
         events = runner.run()
     except (Exception, KeyboardInterrupt) as exc:
         if runner is not None:
-            runner.stop_and_drain()
-            events = runner.events
+            try:
+                runner.stop_and_drain()
+            except (Exception, KeyboardInterrupt) as cleanup_exc:
+                emit(events, time.monotonic, "error",
+                     message=f"cleanup interrupted or failed: {type(cleanup_exc).__name__}: {cleanup_exc}")
         emit(events, time.monotonic, "error", message=f"capture interrupted or failed: {type(exc).__name__}: {exc}")
     finally:
         for stream in streams.values():
-            stream.close()
+            try:
+                stream.close()
+            except OSError as exc:
+                emit(events, time.monotonic, "error", message=f"raw log close failed: {exc}")
         for port in ports.values():
-            port.close()
-    event_path = args.output_dir / "events.jsonl"
-    event_path.write_text("".join(json.dumps(e, ensure_ascii=False) + "\n" for e in events), encoding="utf-8")
+            try:
+                port.close()
+            except Exception as exc:
+                emit(events, time.monotonic, "error", message=f"serial close failed: {exc}")
+    events.finalize()
     expected_roles = ("ap", "sta", "sta2") if args.sta2 else ("ap", "sta")
     report = validation.apply_acceptance(validation.analyze(events, expected_roles), events)
     report["manifest"] = {
