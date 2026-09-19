@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Bounded two-port HaLow capture, software faults, and strict report.
+"""Bounded two- or three-port HaLow capture, software faults, and strict report.
 
-Run COM4/AP with exactly one of COM5 or COM6/STA. The runner never powers a
+Run COM4/AP with COM5 or COM6; optionally run both stations together. It never powers a
 device off or credits a serial/firmware reset as a physical cold boot.
 """
 
@@ -53,8 +53,8 @@ def parse_fault(value: str) -> tuple[str, str, float]:
         seconds = float(at)
     except ValueError as exc:
         raise argparse.ArgumentTypeError("fault format is ROLE:ACTION:SECONDS") from exc
-    if role not in {"ap", "sta"} or action not in {"software_reset", "ap_off_10s"}:
-        raise argparse.ArgumentTypeError("supported faults: ap/sta:software_reset or ap:ap_off_10s")
+    if role not in {"ap", "sta", "sta2"} or action not in {"software_reset", "ap_off_10s"}:
+        raise argparse.ArgumentTypeError("supported faults: ap/sta/sta2:software_reset or ap:ap_off_10s")
     if action == "ap_off_10s" and role != "ap":
         raise argparse.ArgumentTypeError("ap_off_10s is AP-only")
     if not math.isfinite(seconds) or seconds < 0:
@@ -70,8 +70,8 @@ def verify_device(serial_module, device: str) -> None:
         raise RuntimeError(f"{device} identity mismatch: expected {expected}, got {actual or 'missing'}")
 
 
-def verify_inventory(serial_module, ap: str, sta: str) -> None:
-    for device in (ap, sta):
+def verify_inventory(serial_module, *devices: str) -> None:
+    for device in devices:
         verify_device(serial_module, device)
 
 
@@ -208,10 +208,12 @@ class Runner:
             self.stop_and_drain()
             return self.events
         if self.initial_reset:
-            emit(self.events, self.clock, "host_reset", role="sta", action="serial_reset")
-            self.initial_reset(self.ports["sta"])
+            for role in ("sta", "sta2"):
+                if role in self.ports:
+                    emit(self.events, self.clock, "host_reset", role=role, action="serial_reset")
+                    self.initial_reset(self.ports[role])
         self.sta_started_at = self.clock()
-        emit(self.events, self.clock, "host", action="sta_started_after_ap_ready")
+        emit(self.events, self.clock, "host", action="stations_started_after_ap_ready")
         deadline = self.sta_started_at + self.seconds
         next_fault = 0
         while self.clock() < deadline:
@@ -246,7 +248,7 @@ class Runner:
     def stop_and_drain(self):
         # A role with a summary may already be in its shutdown path. It needs
         # time to print RESULT/SHUTDOWN/DONE rather than another STOP command.
-        for role in ("sta", "ap"):
+        for role in ("sta", "sta2", "ap"):
             if role not in self.ports or self._has_final_summary(role):
                 continue
             emit(self.events, self.clock, "host_stop", role=role, command="STOP")
@@ -270,6 +272,7 @@ class Runner:
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--sta", choices=("COM5", "COM6"), required=True)
+    p.add_argument("--sta2", choices=("COM6",), help="optional second STA (requires --sta COM5)")
     p.add_argument("--ap", choices=("COM4",), default="COM4")
     p.add_argument("--seconds", type=float, default=180)
     p.add_argument("--ap-ready-timeout", type=float, default=60)
@@ -280,15 +283,22 @@ def main() -> int:
     p.add_argument("--public-log", type=Path, help="optional allowlisted RW_LINK telemetry copy")
     p.add_argument("--ap-bin", type=Path)
     p.add_argument("--sta-bin", type=Path)
+    p.add_argument("--sta2-bin", type=Path)
     p.add_argument("--no-initial-reset", action="store_true")
     args = p.parse_args()
+    if args.sta2 and args.sta != "COM5":
+        p.error("--sta2 COM6 requires --sta COM5")
+    if args.sta2_bin and not args.sta2:
+        p.error("--sta2-bin requires --sta2 COM6")
+    if any(role == "sta2" for role, _, _ in args.fault) and not args.sta2:
+        p.error("sta2 faults require --sta2 COM6")
     if not math.isfinite(args.seconds) or args.seconds <= 0 or args.seconds > 3600:
         p.error("--seconds must be positive and at most 3600; this runner excludes the 8h soak")
     if not math.isfinite(args.ap_ready_timeout) or not 0 < args.ap_ready_timeout <= 300:
         p.error("--ap-ready-timeout must be 1..300 seconds")
     if any(at >= args.seconds for _, _, at in args.fault):
         p.error("fault offsets must be before the bounded run ends")
-    for binary in (args.ap_bin, args.sta_bin):
+    for binary in (args.ap_bin, args.sta_bin, args.sta2_bin):
         if binary is not None and not binary.is_file():
             p.error(f"binary for SHA256 does not exist: {binary}")
     if args.output_dir.exists() and any(args.output_dir.iterdir()):
@@ -303,8 +313,11 @@ def main() -> int:
     events = []
     runner = None
     try:
-        verify_inventory(serial, args.ap, args.sta)
-        for role, name in (("ap", args.ap), ("sta", args.sta)):
+        devices = {"ap": args.ap, "sta": args.sta}
+        if args.sta2:
+            devices["sta2"] = args.sta2
+        verify_inventory(serial, *devices.values())
+        for role, name in devices.items():
             ports[role] = open_port(serial, name, args.baud)
             streams[role] = (args.output_dir / f"{role}-raw.log").open("wb")
         initial_reset = None
@@ -314,8 +327,11 @@ def main() -> int:
         runner = Runner(ports, streams, seconds=args.seconds,
                         ap_ready_timeout=args.ap_ready_timeout, faults=args.fault,
                         initial_reset=initial_reset,
-                        reopen=lambda role: (verify_device(serial, args.ap if role == "ap" else args.sta),
-                                             open_port(serial, args.ap if role == "ap" else args.sta, args.baud))[1])
+                        reopen=lambda role: (verify_device(serial, devices[role]),
+                                             open_port(serial, devices[role], args.baud))[1])
+        for role, name in devices.items():
+            emit(runner.events, time.monotonic, "host_inventory", role=role,
+                 port=name, mac=EXPECTED[name])
         events = runner.run()
     except (Exception, KeyboardInterrupt) as exc:
         if runner is not None:
@@ -329,10 +345,13 @@ def main() -> int:
             port.close()
     event_path = args.output_dir / "events.jsonl"
     event_path.write_text("".join(json.dumps(e, ensure_ascii=False) + "\n" for e in events), encoding="utf-8")
-    report = validation.apply_acceptance(validation.analyze(events), events)
+    expected_roles = ("ap", "sta", "sta2") if args.sta2 else ("ap", "sta")
+    report = validation.apply_acceptance(validation.analyze(events, expected_roles), events)
     report["manifest"] = {
         "ap": {"port": args.ap, "mac": EXPECTED[args.ap], "binary_sha256": sha256(args.ap_bin)},
         "sta": {"port": args.sta, "mac": EXPECTED[args.sta], "binary_sha256": sha256(args.sta_bin)},
+        **({"sta2": {"port": args.sta2, "mac": EXPECTED[args.sta2],
+                    "binary_sha256": sha256(args.sta2_bin)}} if args.sta2 else {}),
         "host_git": git_state(), "bounded_seconds": args.seconds,
         "warning_counts": runner.warning_counts if runner else None,
         "warning_locations": [e for e in events if e.get("kind") == "warning"],

@@ -22,6 +22,8 @@ ALLOWED = {
     "RW_LINK_CHANNEL", "RW_LINK_RADIO_CONFIG", "RW_LINK_SCAN_TARGET",
     "RW_LINK_RUN_END", "RW_LINK_RADIO_SHUTDOWN",
     "RW_LINK_OUTAGE", "RW_LINK_AP_SERVICE", "RW_LINK_CMD_REJECT",
+    "RW_LINK_DHCP_CLIENT", "RW_LINK_DHCP_SERVER", "RW_LINK_DHCP_LEASE",
+    "RW_LINK_UDP_BIND", "RW_LINK_AP_PEER",
 }
 SAFE_FIELDS = {
     "role", "boot_id", "run_id", "reset_reason", "ip", "port", "window_s",
@@ -36,6 +38,7 @@ SAFE_FIELDS = {
     "rc_sent_start", "rc_sent_end", "rc_success_start", "rc_success_end",
     "snr_db", "max_probes", "max_stas", "phase",
     "rtt_hist_bin_us", "execution_ok", "quality_gate",
+    "acquire_ms", "t_ms", "gw", "mask", "mac", "start_err", "err",
 }
 
 
@@ -71,7 +74,14 @@ def number(fields: dict, key: str) -> int | float | None:
     return n if math.isfinite(n) and n >= 0 else None
 
 
-def analyze(events: list[dict], expected_roles=("ap", "sta")) -> dict:
+def station_roles(expected_roles) -> tuple[str, ...]:
+    return tuple(role for role in expected_roles if role != "ap")
+
+
+def analyze(events: list[dict], expected_roles=None) -> dict:
+    if expected_roles is None:
+        inventory_roles = {e.get("role") for e in events if e.get("kind") == "host_inventory"}
+        expected_roles = ("ap", "sta", "sta2") if "sta2" in inventory_roles else ("ap", "sta")
     errors: list[str] = []
     roles = {}
     for role in expected_roles:
@@ -97,13 +107,13 @@ def analyze(events: list[dict], expected_roles=("ap", "sta")) -> dict:
             if len(unexpected) != len(software_faults):
                 errors.append(f"{role}: unexpected or missing post-start boot count")
         sent, received, lost = (number(summary, k) for k in ("sent", "received", "lost"))
-        if role == "sta":
+        if role != "ap":
             if sent is None or received is None or lost is None:
-                errors.append("sta: summary lacks valid sent/received/lost counts")
+                errors.append(f"{role}: summary lacks valid sent/received/lost counts")
             elif sent <= 0 or received <= 0 or received > sent or lost != sent - received:
-                errors.append("sta: summary counters are inconsistent or have no valid echoes")
+                errors.append(f"{role}: summary counters are inconsistent or have no valid echoes")
         previous = None
-        counter_keys = ("sent", "received", "lost") if role == "sta" else ("echo_id1", "echo_id2")
+        counter_keys = ("sent", "received", "lost") if role != "ap" else ("echo_id1", "echo_id2")
         for sample in samples:
             counts = tuple(number(sample.get("fields", {}), k) for k in counter_keys)
             if any(n is None for n in counts):
@@ -122,8 +132,8 @@ def analyze(events: list[dict], expected_roles=("ap", "sta")) -> dict:
         final_echoes = [e for e in echoes if e.get("monotonic_s", -1) >= final_start_time]
         final_sequences = [e.get("fields", {}).get("seq") for e in final_echoes]
         final_sequences = [s for s in final_sequences if s is not None]
-        if role == "sta" and received is not None and len(final_sequences) != received:
-            errors.append("sta: final run logged valid echo count differs from summary received")
+        if role != "ap" and received is not None and len(final_sequences) != received:
+            errors.append(f"{role}: final run logged valid echo count differs from summary received")
         seqs = [e.get("fields", {}).get("seq") for e in echoes]
         seqs = [s for s in seqs if s is not None]
         if len(final_sequences) != len(set(final_sequences)):
@@ -139,6 +149,26 @@ def analyze(events: list[dict], expected_roles=("ap", "sta")) -> dict:
             "boots": [e.get("fields", {}) for e in boots],
             "cold_boot_counted": 0,
         }
+        if role != "ap":
+            configured_ip = (starts[-1].get("fields", {}) if starts else {}).get("ip")
+            leases = [e.get("fields", {}) for e in row if e.get("marker") == "RW_LINK_DHCP_LEASE"]
+            binds = [e.get("fields", {}) for e in row if e.get("marker") == "RW_LINK_UDP_BIND"]
+            effective_ip = (binds[-1].get("ip") if binds else None) or (leases[-1].get("ip") if leases else None)
+            if configured_ip and configured_ip.upper() == "DHCP":
+                roles[role]["ip_mode"] = "dhcp"
+                roles[role]["dhcp_lease"] = leases[-1] if leases else None
+                roles[role]["udp_bind"] = binds[-1] if binds else None
+                if not leases or not binds or not effective_ip or effective_ip.upper() == "DHCP":
+                    errors.append(f"{role}: DHCP run lacks lease or UDP bind address")
+                elif leases[-1].get("ip") != binds[-1].get("ip"):
+                    errors.append(f"{role}: DHCP lease and UDP bind addresses differ")
+                if not any(e.get("marker") == "RW_LINK_DHCP_CLIENT" and
+                           e.get("fields", {}).get("value") == "ENABLED" for e in row):
+                    errors.append(f"{role}: DHCP client start was not recorded")
+            else:
+                roles[role]["ip_mode"] = "static"
+                effective_ip = effective_ip or configured_ip
+            roles[role]["effective_ip"] = effective_ip
         final_start = starts[-1].get("monotonic_s", -1) if starts else -1
         final_events = [e for e in row if e.get("monotonic_s", -1) >= final_start]
         markers = {e.get("marker") for e in final_events}
@@ -152,11 +182,61 @@ def analyze(events: list[dict], expected_roles=("ap", "sta")) -> dict:
         for e in final_events:
             if e.get("marker") in {"RW_LINK_SOCKET_ERROR", "RW_LINK_CONNECT_TIMEOUT", "RW_LINK_CMD_REJECT"}:
                 errors.append(f"{role}: firmware reported {e['marker']}")
+            if e.get("marker") == "RW_LINK_DHCP_SERVER" and e.get("fields", {}).get("value") in {"FAIL", "STOP_FAIL"}:
+                errors.append(f"{role}: DHCP server failed")
     faults = [e for e in events if e.get("kind") == "fault"]
     ap_ready = [e for e in events if e.get("role") == "ap" and e.get("marker") == "RW_LINK_AP_READY"]
-    sta_start = [e for e in events if e.get("role") == "sta" and e.get("marker") == "RW_LINK_RUN_START"]
-    if not ap_ready or not sta_start or ap_ready[0].get("monotonic_s", 0) > sta_start[0].get("monotonic_s", 0):
-        errors.append("STA run did not follow a recorded AP_READY gate")
+    for station in station_roles(expected_roles):
+        sta_start = [e for e in events if e.get("role") == station and e.get("marker") == "RW_LINK_RUN_START"]
+        if not ap_ready or not sta_start or ap_ready[0].get("monotonic_s", 0) > sta_start[0].get("monotonic_s", 0):
+            errors.append(f"{station}: run did not follow a recorded AP_READY gate")
+    inventory = {e.get("role"): e for e in events if e.get("kind") == "host_inventory"}
+    for station in station_roles(expected_roles):
+        port = inventory.get(station, {}).get("port")
+        expected_id = {"COM5": "1", "COM6": "2"}.get(port)
+        start = roles.get(station, {}).get("run_start") or {}
+        if expected_id and start.get("id") != expected_id:
+            errors.append(f"{station}: firmware ID does not match {port}")
+    if any(roles.get(station, {}).get("ip_mode") == "dhcp" for station in station_roles(expected_roles)):
+        if not any(e.get("role") == "ap" and e.get("marker") == "RW_LINK_DHCP_SERVER" and
+                   e.get("fields", {}).get("value") == "STARTED" for e in events):
+            errors.append("DHCP server start was not recorded")
+        peer_rows = [e.get("fields", {}) for e in events if e.get("role") == "ap" and
+                     e.get("marker") == "RW_LINK_AP_PEER"]
+        ap_leases = [e.get("fields", {}) for e in events if e.get("role") == "ap" and
+                     e.get("marker") == "RW_LINK_DHCP_LEASE"]
+        for station in station_roles(expected_roles):
+            if roles.get(station, {}).get("ip_mode") != "dhcp":
+                continue
+            peer_id = (roles.get(station, {}).get("run_start") or {}).get("id")
+            matching = [row for row in peer_rows if row.get("id") == peer_id and
+                        row.get("ip") == roles[station]["effective_ip"] and row.get("mac")]
+            if not matching:
+                errors.append(f"{station}: AP peer does not match DHCP address")
+            elif not any(lease.get("ip") == matching[-1].get("ip") and
+                         lease.get("mac", "").lower() == matching[-1].get("mac", "").lower()
+                         for lease in ap_leases):
+                errors.append(f"{station}: AP peer lacks matching DHCP lease")
+    if "sta2" in expected_roles:
+        ap_start = roles.get("ap", {}).get("run_start") or {}
+        if number(ap_start, "max_stas") is None or number(ap_start, "max_stas") < 2:
+            errors.append("three-node: AP run did not advertise capacity for two STAs")
+        nonce1 = (roles.get("sta", {}).get("run_start") or {}).get("run_id")
+        nonce2 = (roles.get("sta2", {}).get("run_start") or {}).get("run_id")
+        if not nonce1 or not nonce2 or nonce1 == nonce2:
+            errors.append("three-node: STA run IDs are missing or identical")
+        ip1 = roles.get("sta", {}).get("effective_ip")
+        ip2 = roles.get("sta2", {}).get("effective_ip")
+        if not ip1 or not ip2 or ip1 == ip2:
+            errors.append("three-node: STA IPs are missing or identical")
+        if not any(f.get("role") == "ap" and f.get("action") == "software_reset"
+                   for f in events if f.get("kind") == "fault"):
+            ap_summary = roles.get("ap", {}).get("summary") or {}
+            for station, peer_id in (("sta", "1"), ("sta2", "2")):
+                echoed = number(ap_summary, f"echo_id{peer_id}")
+                matched = number(roles.get(station, {}).get("summary") or {}, "received")
+                if echoed is None or matched is None or echoed < matched:
+                    errors.append(f"three-node: AP echo_id{peer_id} does not cover {station} exact replies")
     for fault in faults:
         role = fault.get("role")
         if fault.get("action") not in {"software_reset", "ap_off_10s"}:
@@ -181,11 +261,12 @@ def analyze(events: list[dict], expected_roles=("ap", "sta")) -> dict:
             errors.append(f"{role}: AP service outage unexpectedly rebooted")
         # The STA reports link recovery even when the AP was the fault target.
         if role == "ap":
-            recovery_after = [e for e in events if e.get("role") == "sta" and
-                              e.get("kind") == "firmware" and
-                              fault.get("monotonic_s", float("inf")) < e.get("monotonic_s", -1) < next_fault_time]
-            if not any(e.get("marker") == "RW_LINK_RECOVERY" for e in recovery_after):
-                errors.append("sta: no recovery marker after AP fault")
+            for station in station_roles(expected_roles):
+                recovery_after = [e for e in events if e.get("role") == station and
+                                  e.get("kind") == "firmware" and
+                                  fault.get("monotonic_s", float("inf")) < e.get("monotonic_s", -1) < next_fault_time]
+                if not any(e.get("marker") == "RW_LINK_RECOVERY" for e in recovery_after):
+                    errors.append(f"{station}: no recovery marker after AP fault")
     runner_errors = [e.get("message", "runner failure") for e in events if e.get("kind") == "error"]
     errors.extend(runner_errors)
     errors.extend(f"{e.get('role', '?')}: raw serial panic/watchdog marker {e.get('code', '?')}"
@@ -194,69 +275,128 @@ def analyze(events: list[dict], expected_roles=("ap", "sta")) -> dict:
             "roles": roles, "faults": faults, "event_count": len(events), "cold_boot_counted": 0}
 
 
+def longest_streak(echoes: list[dict]) -> int:
+    best = current = 0
+    previous = None
+    for event in echoes:
+        seq = number(event.get("fields", {}), "seq")
+        current = current + 1 if seq is not None and (previous is None or seq == previous + 1) else 1
+        best = max(best, current)
+        previous = seq
+    return best
+
+
 def apply_acceptance(report: dict, events: list[dict], *, min_sent=200,
                      min_delivery=0.99, min_duration_s=120,
                      recovery_limit_s=60, consecutive=20) -> dict:
     """Apply the P0-A finite-run gates to an analyzed capture."""
     errors = report["errors"]
-    sta = report["roles"].get("sta", {})
-    summary = sta.get("summary") or {}
-    sent, received = number(summary, "sent"), number(summary, "received")
+    stations = tuple(role for role in report["roles"] if role != "ap")
     faults = report["faults"]
     if not faults:
-        samples = [e for e in events if e.get("role") == "sta" and e.get("marker") == "RW_LINK_SAMPLE"]
-        warmup = next((e for e in samples if number(e.get("fields", {}), "elapsed_ms") is not None
-                       and number(e.get("fields", {}), "elapsed_ms") >= 10000), None)
-        ends = [e for e in events if e.get("role") == "sta" and e.get("marker") == "RW_LINK_SUMMARY"]
-        if warmup is None:
-            errors.append("baseline: missing 10s warmup sample")
-        else:
+        report["post_warmup_by_role"] = {}
+        warmup_times = {}
+        end_times = {}
+        for station in stations:
+            summary = report["roles"].get(station, {}).get("summary") or {}
+            sent, received = number(summary, "sent"), number(summary, "received")
+            samples = [e for e in events if e.get("role") == station and e.get("marker") == "RW_LINK_SAMPLE"]
+            warmup = next((e for e in samples if number(e.get("fields", {}), "elapsed_ms") is not None
+                           and number(e.get("fields", {}), "elapsed_ms") >= 10000), None)
+            ends = [e for e in events if e.get("role") == station and e.get("marker") == "RW_LINK_SUMMARY"]
+            if warmup is None:
+                errors.append(f"{station} baseline: missing 10s warmup sample")
+                continue
+            warmup_times[station] = warmup.get("monotonic_s", 0)
+            if ends:
+                end_times[station] = ends[-1].get("monotonic_s", 0)
             warmup_sent = number(warmup.get("fields", {}), "sent")
             warmup_received = number(warmup.get("fields", {}), "received")
             post_sent = sent - warmup_sent if sent is not None and warmup_sent is not None else None
             post_received = received - warmup_received if received is not None and warmup_received is not None else None
-            report["post_warmup"] = {"sent": post_sent, "received": post_received,
-                                      "warmup_elapsed_ms": number(warmup.get("fields", {}), "elapsed_ms"),
-                                      "duration_s": ends[-1].get("monotonic_s", 0) - warmup.get("monotonic_s", 0) if ends else None}
+            details = {"sent": post_sent, "received": post_received,
+                       "warmup_elapsed_ms": number(warmup.get("fields", {}), "elapsed_ms"),
+                       "duration_s": ends[-1].get("monotonic_s", 0) - warmup.get("monotonic_s", 0) if ends else None}
+            report["post_warmup_by_role"][station] = details
+            if len(stations) == 1:
+                report["post_warmup"] = details
             if post_sent is None or post_sent < min_sent:
-                errors.append(f"baseline: fewer than {min_sent} successfully sent probes after warmup")
+                errors.append(f"{station} baseline: fewer than {min_sent} successfully sent probes after warmup")
             if post_sent is None or post_received is None or post_sent <= 0 or post_received / post_sent < min_delivery:
-                errors.append(f"baseline: post-warmup valid echo delivery below {min_delivery:.1%}")
+                errors.append(f"{station} baseline: post-warmup valid echo delivery below {min_delivery:.1%}")
             if not ends or ends[-1].get("monotonic_s", 0) - warmup.get("monotonic_s", 0) < min_duration_s:
-                errors.append(f"baseline: post-warmup observation shorter than {min_duration_s}s")
+                errors.append(f"{station} baseline: post-warmup observation shorter than {min_duration_s}s")
+        if len(stations) == 2:
+            overlap = min(end_times.values()) - max(warmup_times.values()) if len(end_times) == 2 and len(warmup_times) == 2 else None
+            report["simultaneous_post_warmup_s"] = overlap
+            if overlap is None or overlap < min_duration_s:
+                errors.append(f"three-node: simultaneous post-warmup interval shorter than {min_duration_s}s")
+            else:
+                common_start, common_end = max(warmup_times.values()), min(end_times.values())
+                report["simultaneous_exact_echoes"] = {}
+                for station in stations:
+                    count = sum(e.get("role") == station and e.get("marker") == "RW_LINK_ECHO_MATCH" and
+                                common_start < e.get("monotonic_s", -1) < common_end for e in events)
+                    report["simultaneous_exact_echoes"][station] = count
+                    if count < min_sent:
+                        errors.append(f"three-node: {station} has fewer than {min_sent} exact echoes in simultaneous interval")
     else:
         for index, fault in enumerate(faults):
             start = fault.get("monotonic_s", 0)
             end = faults[index + 1].get("monotonic_s", float("inf")) if index + 1 < len(faults) else float("inf")
             role = fault.get("role")
-            if role == "sta":
-                anchor_marker, anchor_role = "RW_LINK_BOOT", "sta"
-            else:
-                anchor_marker, anchor_role = "RW_LINK_AP_READY", "ap"
-            anchors = [e for e in events if start < e.get("monotonic_s", -1) < end and
-                       e.get("role") == anchor_role and e.get("marker") == anchor_marker]
-            if not anchors:
-                errors.append(f"fault {index + 1}: missing recovery timing anchor {anchor_marker}")
-                continue
-            anchor = anchors[0].get("monotonic_s", 0)
-            fault["anchor_monotonic_s"] = anchor
-            echoes = [e for e in events if anchor < e.get("monotonic_s", -1) < end and
-                      e.get("role") == "sta" and e.get("marker") == "RW_LINK_ECHO_MATCH"]
-            if not echoes or echoes[0]["monotonic_s"] - anchor > recovery_limit_s:
-                errors.append(f"fault {index + 1}: valid echo did not resume within {recovery_limit_s}s")
-                continue
-            fault["first_echo_monotonic_s"] = echoes[0]["monotonic_s"]
-            fault["recovery_s"] = echoes[0]["monotonic_s"] - anchor
-            sequence = [number(e.get("fields", {}), "seq") for e in echoes]
-            streak = best = 0
-            last = None
-            for n in sequence:
-                streak = streak + 1 if n is not None and (last is None or n == last + 1) else 1
-                best = max(best, streak)
-                last = n
-            if best < consecutive:
-                errors.append(f"fault {index + 1}: fewer than {consecutive} consecutive exact echoes")
-            fault["longest_exact_echo_streak"] = best
+            targets = stations if role == "ap" else (role,)
+            fault["recovery_by_role"] = {}
+            for station in targets:
+                anchor_marker, anchor_role = ("RW_LINK_AP_READY", "ap") if role == "ap" else ("RW_LINK_BOOT", station)
+                anchors = [e for e in events if start < e.get("monotonic_s", -1) < end and
+                           e.get("role") == anchor_role and e.get("marker") == anchor_marker]
+                if not anchors:
+                    errors.append(f"fault {index + 1} {station}: missing recovery timing anchor {anchor_marker}")
+                    continue
+                anchor = anchors[0].get("monotonic_s", 0)
+                echoes = [e for e in events if anchor < e.get("monotonic_s", -1) < end and
+                          e.get("role") == station and e.get("marker") == "RW_LINK_ECHO_MATCH"]
+                if not echoes or echoes[0]["monotonic_s"] - anchor > recovery_limit_s:
+                    errors.append(f"fault {index + 1} {station}: valid echo did not resume within {recovery_limit_s}s")
+                    continue
+                best = longest_streak(echoes)
+                details = {"anchor_monotonic_s": anchor,
+                           "first_echo_monotonic_s": echoes[0]["monotonic_s"],
+                           "recovery_s": echoes[0]["monotonic_s"] - anchor,
+                           "longest_exact_echo_streak": best}
+                fault["recovery_by_role"][station] = details
+                if len(targets) == 1:
+                    fault.update(details)
+                if best < consecutive:
+                    errors.append(f"fault {index + 1} {station}: fewer than {consecutive} consecutive exact echoes")
+                if role != "ap" and len(stations) == 2:
+                    other = next(s for s in stations if s != station)
+                    before = [e for e in events if e.get("role") == other and
+                              e.get("marker") == "RW_LINK_ECHO_MATCH" and
+                              e.get("monotonic_s", -1) <= start]
+                    other_echoes = [e for e in events if e.get("role") == other and
+                                    e.get("marker") == "RW_LINK_ECHO_MATCH" and
+                                    start < e.get("monotonic_s", -1) < echoes[0]["monotonic_s"]]
+                    after = [e for e in events if e.get("role") == other and
+                             e.get("marker") == "RW_LINK_ECHO_MATCH" and
+                             echoes[0]["monotonic_s"] <= e.get("monotonic_s", -1) < end]
+                    if not other_echoes:
+                        errors.append(f"fault {index + 1}: {other} had no exact echo while {station} restarted")
+                    if not before or not after:
+                        errors.append(f"fault {index + 1}: {other} lacks echo evidence across {station} restart")
+                    span = ([before[-1]] if before else []) + other_echoes + ([after[0]] if after else [])
+                    max_gap = max((b["monotonic_s"] - a["monotonic_s"] for a, b in zip(span, span[1:])), default=float("inf"))
+                    if max_gap > 5:
+                        errors.append(f"fault {index + 1}: {other} echo gap exceeded 5s during {station} restart")
+                    other_failures = [e for e in events if e.get("role") == other and
+                                      e.get("marker") in {"RW_LINK_OUTAGE", "RW_LINK_RECOVERY", "RW_LINK_TIMEOUT", "RW_LINK_SEND_FAIL", "RW_LINK_RUN_START"} and
+                                      start < e.get("monotonic_s", -1) < echoes[0]["monotonic_s"]]
+                    if other_failures:
+                        errors.append(f"fault {index + 1}: {other} had an outage while {station} restarted")
+                    fault["unaffected_station"] = other
+                    fault["unaffected_exact_echoes_during_restart"] = len(other_echoes)
+                    fault["unaffected_max_echo_gap_s"] = max_gap
     report["status"] = "PASS" if not errors else "FAIL"
     return report
 
@@ -284,20 +424,24 @@ def markdown(report: dict) -> str:
         lines.append(f"| {role} | {s.get('sent', '—')} | {s.get('received', '—')} | "
                      f"{s.get('lost', '—')} | {s.get('duplicates', '—')} | "
                      f"{entry['sample_count']} | {windows} |")
-    sta = report["roles"].get("sta", {}).get("summary") or {}
-    post = report.get("post_warmup")
-    if post:
-        lines.extend(["", f"After 10s warmup: {post.get('sent')} sent, {post.get('received')} exact replies "
-                      f"over {post.get('duration_s', '—')}s."])
-    if sta:
-        lines.extend(["", f"STA RTT p50/p95/max: {sta.get('rtt_p50_us', '—')}/"
-                      f"{sta.get('rtt_p95_us', '—')}/{sta.get('rtt_max_us', '—')} µs; "
-                      f"offered/useful: {sta.get('offered_bps', '—')}/"
-                      f"{sta.get('useful_bps', '—')} bps; RSSI: {sta.get('rssi_dbm', '—')} dBm.",
-                      f"STA send failures/skipped/invalid: {sta.get('send_fail', '—')}/"
-                      f"{sta.get('skipped', '—')}/{sta.get('invalid', '—')}; "
-                      f"heap free/min: {sta.get('heap_free', '—')}/{sta.get('heap_min', '—')} bytes; "
-                      f"reconnects: {sta.get('reconnects', '—')}."])
+    for role in station_roles(report["roles"]):
+        role_report = report["roles"].get(role, {})
+        sta = role_report.get("summary") or {}
+        post = report.get("post_warmup_by_role", {}).get(role)
+        lines.extend(["", f"{role} network: {role_report.get('ip_mode', '—')} "
+                      f"{role_report.get('effective_ip', '—')}."])
+        if post:
+            lines.extend(["", f"{role} after 10s warmup: {post.get('sent')} sent, "
+                          f"{post.get('received')} exact replies over {post.get('duration_s', '—')}s."])
+        if sta:
+            lines.extend(["", f"{role} RTT p50/p95/max: {sta.get('rtt_p50_us', '—')}/"
+                          f"{sta.get('rtt_p95_us', '—')}/{sta.get('rtt_max_us', '—')} µs; "
+                          f"offered/useful: {sta.get('offered_bps', '—')}/"
+                          f"{sta.get('useful_bps', '—')} bps; RSSI: {sta.get('rssi_dbm', '—')} dBm.",
+                          f"{role} send failures/skipped/invalid: {sta.get('send_fail', '—')}/"
+                          f"{sta.get('skipped', '—')}/{sta.get('invalid', '—')}; "
+                          f"heap free/min: {sta.get('heap_free', '—')}/{sta.get('heap_min', '—')} bytes; "
+                          f"reconnects: {sta.get('reconnects', '—')}."])
     lines.extend(["", "Cold boots credited: **0**. A serial or firmware reset is not a power cycle.", ""])
     warning_counts = report.get("manifest", {}).get("warning_counts")
     if warning_counts:
@@ -311,8 +455,9 @@ def markdown(report: dict) -> str:
         for f in report["faults"]:
             lines.append(f"- {f.get('iso_time', '?')} {f.get('role', '?')}: "
                          f"{f.get('action', '?')}, acknowledged={f.get('acknowledged', False)}, "
-                         f"first exact echo after anchor={f.get('recovery_s', '—')} s, "
-                         f"longest consecutive streak={f.get('longest_exact_echo_streak', '—')}")
+                         f"recovery={f.get('recovery_by_role', {})}, "
+                         f"unaffected station echoes={f.get('unaffected_exact_echoes_during_restart', '—')}, "
+                         f"max echo gap={f.get('unaffected_max_echo_gap_s', '—')}s")
         lines.append("")
     if report["errors"]:
         lines.extend(["Failures:", ""])
