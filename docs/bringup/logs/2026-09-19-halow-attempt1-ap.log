@@ -1,0 +1,8 @@
+# Extracted RW_LINK markers; full serial log retained privately.
+RW_LINK_LED gpio=21 active_low=1 wait=slow connected=on traffic=short_off pass=double fail=triple
+RW_LINK_ROLE=AP ESP32_MAC=44:b1:76:b0:57:20 PSRAM_BYTES=8388608
+RW_LINK_RF=ENABLED
+RW_LINK_CHANNEL freq_hz=903500000 bw_mhz=1 status=3
+RW_LINK_RADIO_SHUTDOWN
+RW_LINK_RADIO_RESULT=FAIL
+RW_LINK_DONE

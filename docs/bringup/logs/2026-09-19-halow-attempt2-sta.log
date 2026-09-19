@@ -1,0 +1,45 @@
+# Extracted RW_LINK markers; full serial log retained privately.
+RW_LINK_LED gpio=21 active_low=1 wait=slow connected=on traffic=short_off pass=double fail=triple
+RW_LINK_ROLE=STA ESP32_MAC=44:b1:76:b0:57:1c PSRAM_BYTES=8388608
+RW_LINK_RF=ENABLED
+RW_LINK_CHANNEL freq_hz=903500000 bw_mhz=1 status=0
+RW_LINK_RADIO_CONFIG country=US channel=3 opclass=1 max_tx_dbm=1 psk=REDACTED
+RW_LINK_STA_EVENT=7
+RW_LINK_STA_EVENT=0
+RW_LINK_STA_START=0
+RW_LINK_SCAN_TARGET freq_hz=903500000 bw_mhz=1 rssi_dbm=-39
+RW_LINK_STA_EVENT=1
+RW_LINK_STA_STATE=1
+RW_LINK_STA_EVENT=3
+RW_LINK_STA_EVENT=3
+RW_LINK_STA_EVENT=4
+RW_LINK_STA_EVENT=6
+RW_LINK_STA_STATE=2
+RW_LINK_IP=192.168.50.2
+RW_LINK_ECHO seq=0 rtt_us=180293
+RW_LINK_ECHO seq=1 rtt_us=21650
+RW_LINK_ECHO seq=2 rtt_us=18951
+RW_LINK_ECHO seq=3 rtt_us=32605
+RW_LINK_ECHO seq=4 rtt_us=13070
+RW_LINK_ECHO seq=5 rtt_us=23545
+RW_LINK_ECHO seq=6 rtt_us=13163
+RW_LINK_ECHO seq=7 rtt_us=13048
+RW_LINK_ECHO seq=8 rtt_us=16207
+RW_LINK_ECHO seq=9 rtt_us=12595
+RW_LINK_ECHO seq=10 rtt_us=26563
+RW_LINK_ECHO seq=11 rtt_us=11985
+RW_LINK_ECHO seq=12 rtt_us=12155
+RW_LINK_ECHO seq=13 rtt_us=11562
+RW_LINK_ECHO seq=14 rtt_us=16556
+RW_LINK_ECHO seq=15 rtt_us=25864
+RW_LINK_ECHO seq=16 rtt_us=11983
+RW_LINK_ECHO seq=17 rtt_us=26702
+RW_LINK_ECHO seq=18 rtt_us=12118
+RW_LINK_ECHO seq=19 rtt_us=11960
+RW_LINK_UDP sent=20 received=20 planned=20 rtt_mean_us=25628 rtt_max_us=180293
+RW_LINK_STA_STATE=0
+RW_LINK_STA_EVENT=5
+RW_LINK_STA_EVENT=7
+RW_LINK_RADIO_SHUTDOWN
+RW_LINK_RADIO_RESULT=PASS
+RW_LINK_DONE

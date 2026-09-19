@@ -92,7 +92,11 @@ RoadWeave/
 
 ## ステータス
 
-2026-09-06 時点:
+2026-09-19時点: 3組のSPI診断PASS、2組を順番にHaLow AP/STA接続して各UDP 20/20往復成功。
+ESP32内蔵2.4 GHz Wi-Fiは使用していません。P0-Aの長時間運転・起動反復・自動復帰などは未完了です。
+[試験結果](docs/bringup/halow-link-retest-2026-09-19.md)と[残課題の整理](docs/bringup/p0-a-open-items-2026-09-19.md)を参照してください。
+
+以下は2026-09-06時点の履歴:
 
 - XIAO ESP32S3 1 台目: Gate 1（USB/flash/PSRAM smoke）PASS。残り 2 台と Wio-WM6180 x3 は到着待ち。
 - ESP-IDF v5.4.4 を恒久インストール（`~/esp/v5.4.4/esp-idf`）。porting assistant と Gate 4 用 example（softap / sta_connect / iperf）は XIAO profile でビルド済み。

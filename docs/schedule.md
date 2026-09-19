@@ -1,6 +1,18 @@
 # RoadWeave 実行スケジュール
 
-更新日: 2026-09-05
+更新日: 2026-09-19（最新到達点を追記。下記の日程・過去在庫は未再調整）
+
+## 2026-09-19の到達点
+
+XIAO + WM6180の3組を認識し、全組のSPI診断に合格。2組を順番にAP/STAとして試験し、
+それぞれHaLow UDP 20/20往復に成功した。内蔵2.4 GHz Wi-Fiは使っていない。
+P0-Aの基本通信は成立したが、cold boot 50回、8時間soak、自動復帰、DHCP、電流等の検証は残る。
+3台同時通信は追加試験であり、元のP0-A必須条件とは分ける。
+
+- [最新実測](bringup/halow-link-retest-2026-09-19.md)
+- [残課題・判定基準・次の実行順](bringup/p0-a-open-items-2026-09-19.md)
+
+Issue/Projectの進捗・日程更新は別途必要。以下の計画日付を現在の完了状況として読まない。
 
 到着日は物流で変動するため、日付だけでなくgate完了を次工程の開始条件にする。GitHub Project #2のStart date、Target date、Iterationをsource of truthとして同期する。
 

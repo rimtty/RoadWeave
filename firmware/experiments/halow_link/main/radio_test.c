@@ -62,6 +62,12 @@ static void bench_free_rx(void *handle, void *buffer)
     mmpkt_release(pkt);
 }
 
+static esp_err_t bench_transmit_wrap(void *handle, void *buffer, size_t len, void *pbuf)
+{
+    (void)pbuf;
+    return bench_transmit(handle, buffer, len);
+}
+
 static bool select_bench_channel(void)
 {
     const struct mmwlan_s1g_channel_list *domain =
@@ -135,7 +141,7 @@ static bool set_static_ip(void)
     if (!netif) return false;
     esp_netif_driver_ifconfig_t driver = {
         .handle = esp_netif_get_io_driver(netif), .transmit = bench_transmit,
-        .driver_free_rx_buffer = bench_free_rx
+        .transmit_wrap = bench_transmit_wrap, .driver_free_rx_buffer = bench_free_rx
     };
     if (esp_netif_set_driver_config(netif, &driver) != ESP_OK) return false;
     esp_err_t ret = esp_netif_dhcpc_stop(netif);
@@ -261,7 +267,13 @@ bool run_radio_test(void)
     bool ok = false;
     struct mmwlan_version version = {0};
     if (mmwlan_get_version(&version) != MMWLAN_SUCCESS || !version.morse_chip_id) goto done;
+    /* mmhalow_init() boots a placeholder interface. Channel-list changes are
+     * only legal with all interfaces stopped. Keep its netif, then boot again
+     * with the bench channel selected. No AP/STA has been enabled yet. */
+    if (mmwlan_shutdown() != MMWLAN_SUCCESS) goto done;
     if (!select_bench_channel()) goto done;
+    struct mmwlan_boot_args boot = MMWLAN_BOOT_ARGS_INIT;
+    if (mmwlan_boot(&boot) != MMWLAN_SUCCESS) goto done;
     if (mmwlan_set_power_save_mode(MMWLAN_PS_DISABLED) != MMWLAN_SUCCESS) goto done;
     enum mmwlan_status power_status = mmwlan_override_max_tx_power(CONFIG_RW_LINK_TX_POWER_DBM);
     if (power_status != MMWLAN_SUCCESS) {
