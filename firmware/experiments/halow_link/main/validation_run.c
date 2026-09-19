@@ -17,6 +17,7 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "mmwlan.h"
 #include "link_test.h"
 
 #define VALIDATION_PORT 3333

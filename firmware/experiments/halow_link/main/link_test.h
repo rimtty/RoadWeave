@@ -3,7 +3,7 @@
 bool run_preflight(void);
 bool run_radio_test(void);
 #ifdef CONFIG_RW_LINK_CONTINUOUS
-#include "mmhalow.h"
+struct mmwlan_ap_args;
 bool run_validation_ap(const struct mmwlan_ap_args *ap);
 bool run_validation_sta(void);
 bool validation_link_ready(void);
