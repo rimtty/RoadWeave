@@ -45,8 +45,8 @@ jobs:
       - name: HaLow validation parser and mocked runner tests
         run: python3 -B -m unittest discover -s tools/tests -p test_halow_validation.py -v
 
-      - name: HaLow throughput counter and search tests
-        run: python3 -B -m unittest discover -s tools/tests -p test_halow_throughput.py -v
+      - name: HaLow throughput counter, search and analysis tests
+        run: python3 -B -m unittest discover -s tools/tests -p 'test_halow_throughput*.py' -v
 
       - name: Host simulator (floor + voice over lossy channel)
         run: make -C firmware/sim run

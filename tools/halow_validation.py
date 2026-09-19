@@ -19,7 +19,7 @@ ALLOWED = {
     "RW_LINK_DONE", "RW_LINK_CMD_ACK", "RW_LINK_STA_STATE",
     "RW_LINK_AP_STA_STATE", "RW_LINK_CONNECT_TIMEOUT",
     "RW_LINK_SOCKET_ERROR", "RW_LINK_SEND_FAIL",
-    "RW_LINK_CHANNEL", "RW_LINK_RADIO_CONFIG", "RW_LINK_SCAN_TARGET",
+    "RW_LINK_CHANNEL", "RW_LINK_OPERATING_CHANNEL", "RW_LINK_RADIO_CONFIG", "RW_LINK_SCAN_TARGET",
     "RW_LINK_RUN_END", "RW_LINK_RADIO_SHUTDOWN",
     "RW_LINK_OUTAGE", "RW_LINK_AP_SERVICE", "RW_LINK_CMD_REJECT",
     "RW_LINK_DHCP_CLIENT", "RW_LINK_DHCP_SERVER", "RW_LINK_DHCP_LEASE",
@@ -40,7 +40,7 @@ SAFE_FIELDS = {
     "snr_db", "max_probes", "max_stas", "phase",
     "rtt_hist_bin_us", "execution_ok", "quality_gate",
     "acquire_ms", "t_ms", "gw", "mask", "mac", "start_err", "err",
-    "noise_dbm", "op_bw_mhz", "scan_snr_db", "scan_snr_status",
+    "noise_dbm", "op_bw_mhz", "pri_bw_mhz", "scan_snr_db", "scan_snr_status",
     "gpio", "radio_stopped",
 }
 
