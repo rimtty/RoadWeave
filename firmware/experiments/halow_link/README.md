@@ -163,6 +163,15 @@ The earlier `RW_LINK_CMD STOP` is also accepted. The pinned SDK's INFO
 logging is reduced to WARN only in throughput builds to avoid per-packet
 console work changing the measured rate.
 
+Before `RW_TPUT_READY`, each device prints `RW_LINK_OPERATING_CHANNEL`
+with `channel`, `opclass`, `bw_mhz`, `freq_hz`, `pri_bw_mhz`, and
+`status=connected`. The class/channel come from the linked VIF; operating
+bandwidth and centre frequency come from the matching single-channel
+regulatory entry. Primary bandwidth is reported separately and is not used
+as operating bandwidth. If the VIF information is unavailable or disagrees
+with the selected regulatory entry, the throughput session aborts instead
+of reporting an unverified width.
+
 After both devices report `RW_TPUT_READY role=... ip=...`, use the
 reported IPs. For each unique, increasing stage ID, first send to the
 receiver:
@@ -200,6 +209,38 @@ accounting. The host computes goodput over the larger of actual TX
 data-phase duration and RX first-to-last active span. Occasional one-tick
 yields in the sender/receiver hot loops allow ESP-IDF idle/WDT tasks to run;
 this load is part of the reported bench workload.
+
+Each completed stage also emits `RW_TPUT_TX_DIAG` or `RW_TPUT_RX_DIAG` with
+the same `stage` ID as its existing summary. These are separate parseable
+lines; no existing summary or sample field changes. All durations are
+microseconds from `esp_timer_get_time()` and are cumulative for that stage.
+`fill_us` measures packet construction over all send attempts. `send_us`
+measures time inside data `send()` calls (successful and failed), while
+`send_max_us` is their longest call. `send_over_1ms` and `send_over_10ms`
+count calls taking at least those thresholds. A long `send()` points to
+socket/stack backpressure, but does not isolate radio airtime. `pace_wait_us`
+and `pace_waits` count elapsed time and iterations spent yielding before the
+next scheduled send in paced mode. `pace_late_us` sums the positive lateness
+at each attempted send; `pace_late_max_us` is the largest such lateness.
+Both pacing fields remain zero in unpaced mode. Lateness may be caused by
+packet construction, `send()`, scheduling, or the deliberate idle yield.
+`loop_yield_us` counts elapsed time in the periodic one-tick delay.
+
+On the receiver, `recv_us` and `recv_max_us` measure all `recvfrom()` calls,
+including blocking waits; `recv_timeouts` counts EAGAIN/EWOULDBLOCK returns.
+`process_us` and `process_max_us` measure elapsed time from the return of
+`recvfrom()` through packet classification, payload checks, and bitmap/counter
+updates; they also include any START/END acknowledgement or error log in that
+iteration. `verify_us` is a subset of `process_us`.
+`verify_us`, `verify_max_us`, and `verify_packets` measure the payload-byte
+check for in-range, stage-matched data packets, including failed checks and
+duplicates. They exclude socket receive, header checks, and bitmap updates.
+The timer reads and counter updates add a small cost to each packet. These
+durations can overlap the stage wall-clock span conceptually (for example,
+`send_us` includes OS scheduling while in `send()`) and should not be added
+to infer CPU utilization. Control-packet exchanges, samples, and final log
+flushing are outside the data-path counters. The detailed lines are emitted
+only after the stage, so serial logging does not occur on each packet.
 
 This measures observed, verified UDP goodput for the chosen channel,
 bandwidth, placement, hardware, and stage settings. It does not by itself

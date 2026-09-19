@@ -10,6 +10,7 @@ bool run_validation_ap(const struct mmwlan_ap_args *ap);
 bool run_validation_sta(void);
 #ifdef CONFIG_RW_LINK_THROUGHPUT
 bool run_throughput(void);
+bool validation_report_operating_channel(void);
 #endif
 bool validation_link_ready(void);
 bool validation_sta_ip(char *out, size_t out_len);

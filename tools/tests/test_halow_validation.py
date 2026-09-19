@@ -75,6 +75,14 @@ def three_sta_restart_events():
 
 
 class ParserTests(unittest.TestCase):
+    def test_operating_channel_marker_preserves_verified_width(self):
+        event = v.parse_line(
+            "RW_LINK_OPERATING_CHANNEL channel=42 opclass=3 bw_mhz=8 "
+            "freq_hz=925000000 pri_bw_mhz=2 status=connected psk=secret")
+        self.assertEqual(event, {"marker": "RW_LINK_OPERATING_CHANNEL", "fields": {
+            "channel": "42", "opclass": "3", "bw_mhz": "8",
+            "freq_hz": "925000000", "pri_bw_mhz": "2", "status": "connected"}})
+
     def test_allowlist_discards_credentials_and_parses_prefixed_line(self):
         self.assertIsNone(v.parse_line("I (100) SSID=secret PSK=secret"))
         event = v.parse_line("I (100) LINK: RW_LINK_SAMPLE sent=4 received=3 psk=secret heap_free=800")

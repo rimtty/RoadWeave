@@ -177,6 +177,31 @@ static bool select_bench_channel(void)
     return false;
 }
 
+#ifdef CONFIG_RW_LINK_THROUGHPUT
+bool validation_report_operating_channel(void)
+{
+    struct mmwlan_vif_channel_info info = {0};
+#ifdef CONFIG_RW_LINK_AP
+    const enum mmwlan_vif vif = MMWLAN_VIF_AP;
+#else
+    const enum mmwlan_vif vif = MMWLAN_VIF_STA;
+    if (!validation_link_ready()) return false;
+#endif
+    if (mmwlan_get_vif_channel_info(vif, &info) != MMWLAN_SUCCESS) return false;
+    /* The selected regulatory list contains one operating channel. Require
+     * the reported VIF identity to match it before claiming its width. */
+    if (bench_channels.num_channels != 1 ||
+        info.op_class != bench_channels.channels[0].s1g_operating_class ||
+        info.s1g_chan_num != bench_channels.channels[0].s1g_chan_num) return false;
+    const struct mmwlan_s1g_channel *channel = &bench_channels.channels[0];
+    printf("RW_LINK_OPERATING_CHANNEL channel=%u opclass=%u bw_mhz=%u"
+           " freq_hz=%" PRIu32 " pri_bw_mhz=%u status=connected\n",
+           info.s1g_chan_num, info.op_class, channel->bw_mhz,
+           channel->centre_freq_hz, info.pri_bw_mhz);
+    return true;
+}
+#endif
+
 static void got_ip(void *arg, esp_event_base_t base, int32_t id, void *data)
 {
     (void)arg; (void)base; (void)id;

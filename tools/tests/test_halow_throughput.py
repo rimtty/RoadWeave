@@ -55,6 +55,22 @@ class ThroughputTests(unittest.TestCase):
         self.assertEqual(len(row), 2)
         self.assertEqual(row[0]["fields"], {"stage": "7", "sent": "400"})
 
+    def test_parser_preserves_stage_diagnostics_without_unknown_fields(self):
+        rows = t.parse_lines(
+            "RW_TPUT_TX_DIAG stage=7 fill_us=500 send_us=2000 "
+            "send_max_us=1100 send_over_1ms=1 send_over_10ms=0 "
+            "pace_wait_us=300 pace_waits=2 pace_late_us=40 "
+            "pace_late_max_us=30 loop_yield_us=100 psk=secret"
+            "RW_TPUT_RX_DIAG stage=7 recv_us=4000 recv_max_us=1000 "
+            "recv_timeouts=2 process_us=200 process_max_us=20 "
+            "verify_us=100 verify_max_us=10 verify_packets=8 loop_yield_us=50")
+        self.assertEqual([row["marker"] for row in rows],
+                         ["RW_TPUT_TX_DIAG", "RW_TPUT_RX_DIAG"])
+        self.assertEqual(rows[0]["fields"]["send_us"], "2000")
+        self.assertEqual(rows[1]["fields"]["process_us"], "200")
+        self.assertEqual(rows[1]["fields"]["verify_packets"], "8")
+        self.assertNotIn("psk", rows[0]["fields"])
+
     def test_exact_valid_stage_and_body_goodput(self):
         result = assess(stage_fixture())
         self.assertTrue(result["valid"], result["errors"])
