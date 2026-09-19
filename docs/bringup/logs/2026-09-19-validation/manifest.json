@@ -1,0 +1,152 @@
+{
+  "schema_version": 1,
+  "draft": false,
+  "analysis_commit": "fb73082e391b59a9e1aeca01a65890d9728d8fc3",
+  "policy": "known marker and field allowlist; raw logs, private configuration and free-form error text excluded",
+  "cases": [
+    {
+      "run_id": "static-baseline",
+      "published_events": "static-baseline.events.jsonl",
+      "published_sha256": "44609569b430f8449bae7987e0fdfc1e4e1b983cbee9d9de85a29418e1299a39",
+      "raw_events_sha256": "a29a4ced20cc391f25b8cdff9b2fb85dff84ee6822f0a8ec8401bc135697c179",
+      "published_reanalysis_status": "PASS",
+      "event_count": 659
+    },
+    {
+      "run_id": "static-ap-off",
+      "published_events": "static-ap-off.events.jsonl",
+      "published_sha256": "5e6e9e59086034f3a2a057fbbba1c44b0a5fe89c4908c2e56749ac4de2f1c80d",
+      "raw_events_sha256": "bd80268dd317596bbcd7e97dafb8fc97bbbcdc689285a0e670d87ce958a81552",
+      "published_reanalysis_status": "PASS",
+      "event_count": 585
+    },
+    {
+      "run_id": "dhcp-1mhz-run1",
+      "published_events": "dhcp-1mhz-run1.events.jsonl",
+      "published_sha256": "625638d5353c2e4a06093dc21d0d559a388b8bfe06e1f94856af4942456772c6",
+      "raw_events_sha256": "e748b1a1cec465d52556323acf0c56a4c2ee66971fd282de514882acf4e94464",
+      "published_reanalysis_status": "PASS",
+      "event_count": 664
+    },
+    {
+      "run_id": "dhcp-com6",
+      "published_events": "dhcp-com6.events.jsonl",
+      "published_sha256": "88daf14c4f3f989b6d64a1855c3e09e700d033bff6b57807723da6e71f8e6a50",
+      "raw_events_sha256": "b990f25a7485c47a2ea7cefc65e3002d83e2ac404002f16b5329bb8f78294b66",
+      "published_reanalysis_status": "PASS",
+      "event_count": 660
+    },
+    {
+      "run_id": "dhcp-three-node-original",
+      "published_events": "dhcp-three-node-original.events.jsonl",
+      "published_sha256": "1038f2ab99773bd8ec9f805d31955b153a2b5a090015f6e79a76c659409cc77d",
+      "raw_events_sha256": "dc12a8da8a7faf72aaa99bbfbf14a0837198cdcf5e9ccf68808d868141069813",
+      "published_reanalysis_status": "PASS",
+      "event_count": 1274
+    },
+    {
+      "run_id": "fixed-ap-reset3",
+      "published_events": "fixed-ap-reset3.events.jsonl",
+      "published_sha256": "d143c8bd4e2ffc72e9cc2d9d908fc2ce002922ccf9e498cc9da667257826c11d",
+      "raw_events_sha256": "3a5e9b05a61ed50374a520d40b7adbaea12fc38ee5a36fff99c91c18b84b28fb",
+      "published_reanalysis_status": "PASS",
+      "event_count": 1225
+    },
+    {
+      "run_id": "fixed-sta-reset3",
+      "published_events": "fixed-sta-reset3.events.jsonl",
+      "published_sha256": "e84d39f0ba2b8ec81a763ac0b419baa19e1e064c27286f5c95881b346c27dbc7",
+      "raw_events_sha256": "87c2e0ee9a2a668d427888c17d356727fc77ed200d5808a162bf52f3ea8b95ce",
+      "published_reanalysis_status": "PASS",
+      "event_count": 1198
+    },
+    {
+      "run_id": "fixed-ap-off3",
+      "published_events": "fixed-ap-off3.events.jsonl",
+      "published_sha256": "babe6b89de63cbb0bb6e759fb16910721fe7e1e8aa1cacbedf30e52171fb170c",
+      "raw_events_sha256": "ca4729aa00ee06793678f11f06c9d9b1fc0052ea7b5276929244cfac875bd57f",
+      "published_reanalysis_status": "PASS",
+      "event_count": 927
+    },
+    {
+      "run_id": "fixed-1mhz-run1",
+      "published_events": "fixed-1mhz-run1.events.jsonl",
+      "published_sha256": "cffcc2ebb466f039a4cb1642e887217e93c870d919db98cb2196e12f6f66fb17",
+      "raw_events_sha256": "99cb3d4c4466d44b8f93b92f0baaec8557b62f7b59bbc216c23ee3ece4cf1e47",
+      "published_reanalysis_status": "PASS",
+      "event_count": 658
+    },
+    {
+      "run_id": "fixed-1mhz-run2",
+      "published_events": "fixed-1mhz-run2.events.jsonl",
+      "published_sha256": "73530a3ac5df61bd40926b6db7a2920a8f2eff1bc2657202651575e362887a79",
+      "raw_events_sha256": "8274bae01420e4c3d3cd220f1e2de6ac1139fab53caafb8dfc578b7a4509da8b",
+      "published_reanalysis_status": "PASS",
+      "event_count": 658
+    },
+    {
+      "run_id": "fixed-1mhz-run3",
+      "published_events": "fixed-1mhz-run3.events.jsonl",
+      "published_sha256": "d97d4e3ecc0e9f28ab5a7d3a94c8c77b09d3c7ca7665f06833631a31a0e5e87f",
+      "raw_events_sha256": "cb8c3847bfe30d115e2ba83357c99bb92fd82f86ba07df0600633281d7f99998",
+      "published_reanalysis_status": "PASS",
+      "event_count": 649
+    },
+    {
+      "run_id": "fixed-2mhz-run1",
+      "published_events": "fixed-2mhz-run1.events.jsonl",
+      "published_sha256": "9c8ee98acd47e7692d6a0c8cc641f284a310e57e58df6b0c8909d77083124695",
+      "raw_events_sha256": "3b0f3ea8834d17774a8848c3eefaf7109466085a91b6097a56132fb92252df59",
+      "published_reanalysis_status": "PASS",
+      "event_count": 668
+    },
+    {
+      "run_id": "fixed-2mhz-run2",
+      "published_events": "fixed-2mhz-run2.events.jsonl",
+      "published_sha256": "8165e9ca5cef61c7765467c0bb0970e1d8c7a1b46890701815eaaf55cb26b9b1",
+      "raw_events_sha256": "74c2f1fbc7b91b31f0053877ccb33fbed218b680ed8dabe6977519d5723d402d",
+      "published_reanalysis_status": "PASS",
+      "event_count": 658
+    },
+    {
+      "run_id": "fixed-2mhz-run3",
+      "published_events": "fixed-2mhz-run3.events.jsonl",
+      "published_sha256": "6d279fedf444d01ff467a59dcf162b8d40e38977af156de5f7a5f8c9f700cb44",
+      "raw_events_sha256": "2ac5d1fc2662dda5edd5b9fc3d722ad4abea8b44a39571fcb38b2fbf13b5b58e",
+      "published_reanalysis_status": "PASS",
+      "event_count": 658
+    },
+    {
+      "run_id": "fixed-load-1mhz",
+      "published_events": "fixed-load-1mhz.events.jsonl",
+      "published_sha256": "c65b5fe9722f898de0d4363f9f9138007a2bdbbe17400ffd18757662dde50f09",
+      "raw_events_sha256": "cacb50a22490f3a1385f7e062b9e5470ecaebe182c7f8ea0947b6115e9490315",
+      "published_reanalysis_status": "PASS",
+      "event_count": 1533
+    },
+    {
+      "run_id": "fixed-load-2mhz",
+      "published_events": "fixed-load-2mhz.events.jsonl",
+      "published_sha256": "2a35a82d7be73064d53512de93f128b1c5b1b00e8a2d2ad8240b2bbcacf42206",
+      "raw_events_sha256": "097b571fb073cf83956afec43da6327125d6c15038c045a5b1279645b0326dfe",
+      "published_reanalysis_status": "PASS",
+      "event_count": 1534
+    },
+    {
+      "run_id": "fixed-three-node-baseline",
+      "published_events": "fixed-three-node-baseline.events.jsonl",
+      "published_sha256": "f826ebd72906e7edbc20ef6ad6022bc883a5a997c52da91a52916ce138bcefd2",
+      "raw_events_sha256": "795d02ecd3cc19e3728e548bdd3849353f3c7d1e088025042523c3c4a26e7b2f",
+      "published_reanalysis_status": "PASS",
+      "event_count": 1288
+    },
+    {
+      "run_id": "fixed-three-node-resets",
+      "published_events": "fixed-three-node-resets.events.jsonl",
+      "published_sha256": "0a3e5e354e7ece3c7e24852e4ca51c94dc659f4160cc18bb50acb93ece3cc4b5",
+      "raw_events_sha256": "377eebd5a54b9c769b7632342a421cc260b44a5e0da2573fb6d95b136d087dba",
+      "published_reanalysis_status": "PASS",
+      "event_count": 1936
+    }
+  ]
+}

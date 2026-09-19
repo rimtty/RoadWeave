@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "draft": false,
+  "basis": "flash log MAC/size/hash-verification plus captured run manifest matched to independently hashed archived binary; final managed case STOP and shutdown markers",
+  "devices": [
+    {
+      "role": "ap",
+      "port": "COM4",
+      "mac": "44:B1:76:B0:57:20",
+      "binary_sha256": "ab8ab6f0d7d94fe2f56eeb08506fb88f76cf08b676bb4fb9e692d48b6e96d21a",
+      "source_commit": "aa58241f266168e28041148cff8da38109ce2b69",
+      "binary_label": "dhcp-ap.bin",
+      "written_bytes": 1514896,
+      "flash_address": "0x10000",
+      "esptool_hash_verified": true,
+      "flash_log_sha256": "3e9ea932ac17d02bf3f049671f5194c418c8f6c224eb867e05f74156a3f319d2",
+      "final_case": "fixed-three-node-resets",
+      "radio_state": "OFF",
+      "final_evidence": [
+        {
+          "iso_time": "2026-09-19T11:04:49.338+00:00",
+          "monotonic_s": 15287.234,
+          "marker": "RW_LINK_CMD_ACK",
+          "fields": {
+            "command": "STOP"
+          }
+        },
+        {
+          "iso_time": "2026-09-19T11:04:49.589+00:00",
+          "monotonic_s": 15287.484,
+          "marker": "RW_LINK_RADIO_SHUTDOWN",
+          "fields": {}
+        },
+        {
+          "iso_time": "2026-09-19T11:04:49.589+00:00",
+          "monotonic_s": 15287.484,
+          "marker": "RW_LINK_RADIO_RESULT",
+          "fields": {
+            "value": "PASS"
+          }
+        },
+        {
+          "iso_time": "2026-09-19T11:04:49.589+00:00",
+          "monotonic_s": 15287.484,
+          "marker": "RW_LINK_DONE",
+          "fields": {}
+        }
+      ],
+      "restart_behavior": "RF-enabled 1 MHz DHCP validation starts again for at most 600 seconds after reset or power-up"
+    },
+    {
+      "role": "sta",
+      "port": "COM5",
+      "mac": "44:B1:76:B0:57:1C",
+      "binary_sha256": "624bd0e5bffbc84e5d495b993f37bd4cf2cdd889cf56db513c9b0e192094b063",
+      "source_commit": "aa58241f266168e28041148cff8da38109ce2b69",
+      "binary_label": "dhcp-sta.bin",
+      "written_bytes": 1514208,
+      "flash_address": "0x10000",
+      "esptool_hash_verified": true,
+      "flash_log_sha256": "4288659aa0f060988a1b7aca891f4ef5cc5130591964cb68564691ac1fa2b3d5",
+      "final_case": "fixed-three-node-resets",
+      "radio_state": "OFF",
+      "final_evidence": [
+        {
+          "iso_time": "2026-09-19T11:04:49.085+00:00",
+          "monotonic_s": 15286.984,
+          "marker": "RW_LINK_CMD_ACK",
+          "fields": {
+            "command": "STOP"
+          }
+        },
+        {
+          "iso_time": "2026-09-19T11:04:49.136+00:00",
+          "monotonic_s": 15287.031,
+          "marker": "RW_LINK_RADIO_SHUTDOWN",
+          "fields": {}
+        },
+        {
+          "iso_time": "2026-09-19T11:04:49.136+00:00",
+          "monotonic_s": 15287.031,
+          "marker": "RW_LINK_RADIO_RESULT",
+          "fields": {
+            "value": "PASS"
+          }
+        },
+        {
+          "iso_time": "2026-09-19T11:04:49.136+00:00",
+          "monotonic_s": 15287.031,
+          "marker": "RW_LINK_DONE",
+          "fields": {}
+        }
+      ],
+      "restart_behavior": "RF-enabled 1 MHz DHCP validation starts again for at most 600 seconds after reset or power-up"
+    },
+    {
+      "role": "sta2",
+      "port": "COM6",
+      "mac": "44:B1:76:AE:C4:90",
+      "binary_sha256": "b4a82989fdd9f0a8e6ce715862f7cbbd37dcaf02a3baf1656c2bf9ca1d7d2ade",
+      "source_commit": "aa58241f266168e28041148cff8da38109ce2b69",
+      "binary_label": "dhcp-sta2.bin",
+      "written_bytes": 1514208,
+      "flash_address": "0x10000",
+      "esptool_hash_verified": true,
+      "flash_log_sha256": "411dbd25306352ceec3d65e9b1992533697647f30a2cd11f0c3cb9813a2a8522",
+      "final_case": "fixed-three-node-resets",
+      "radio_state": "OFF",
+      "final_evidence": [
+        {
+          "iso_time": "2026-09-19T11:04:49.136+00:00",
+          "monotonic_s": 15287.031,
+          "marker": "RW_LINK_CMD_ACK",
+          "fields": {
+            "command": "STOP"
+          }
+        },
+        {
+          "iso_time": "2026-09-19T11:04:49.288+00:00",
+          "monotonic_s": 15287.187,
+          "marker": "RW_LINK_RADIO_SHUTDOWN",
+          "fields": {}
+        },
+        {
+          "iso_time": "2026-09-19T11:04:49.288+00:00",
+          "monotonic_s": 15287.187,
+          "marker": "RW_LINK_RADIO_RESULT",
+          "fields": {
+            "value": "PASS"
+          }
+        },
+        {
+          "iso_time": "2026-09-19T11:04:49.288+00:00",
+          "monotonic_s": 15287.187,
+          "marker": "RW_LINK_DONE",
+          "fields": {}
+        }
+      ],
+      "restart_behavior": "RF-enabled 1 MHz DHCP validation starts again for at most 600 seconds after reset or power-up"
+    }
+  ]
+}

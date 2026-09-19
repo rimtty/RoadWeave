@@ -1,0 +1,731 @@
+{
+  "schema_version": 1,
+  "policy": "parser known markers/fields plus explicit numeric RW_LINK_AP_ECHOED; no invented host times",
+  "cases": [
+    {
+      "run_id": "legacy-com5",
+      "firmware_source": "0f9effa19ba91724e92287268e6765f72067169e",
+      "status": "PASS",
+      "checks": {
+        "twenty_unique_echoes": true,
+        "ap_echoed20": true,
+        "shutdown_done_both": true,
+        "result_pass_both": true
+      },
+      "host_monotonic_timestamps_available": false,
+      "roles": {
+        "ap": {
+          "raw_sha256": "c493d9df70a1d17e02f7bd532ca2d1eeb4496f63cd75919c15a205e2351f5f81",
+          "raw_bytes": 45886,
+          "events": [
+            {
+              "raw_line": 132,
+              "marker": "RW_LINK_CHANNEL",
+              "fields": {
+                "freq_hz": "903500000",
+                "bw_mhz": "1",
+                "status": "0"
+              }
+            },
+            {
+              "raw_line": 161,
+              "marker": "RW_LINK_RADIO_CONFIG",
+              "fields": {
+                "country": "US",
+                "channel": "3",
+                "opclass": "1",
+                "max_tx_dbm": "1"
+              }
+            },
+            {
+              "raw_line": 184,
+              "marker": "RW_LINK_AP_READY",
+              "fields": {
+                "ip": "192.168.50.1",
+                "port": "3333",
+                "window_s": "120"
+              }
+            },
+            {
+              "raw_line": 209,
+              "marker": "RW_LINK_AP_STA_STATE",
+              "fields": {
+                "aid": "1",
+                "value": "2"
+              }
+            },
+            {
+              "raw_line": 222,
+              "marker": "RW_LINK_AP_STA_STATE",
+              "fields": {
+                "aid": "1",
+                "value": "3"
+              }
+            },
+            {
+              "raw_line": 228,
+              "marker": "RW_LINK_AP_STA_STATE",
+              "fields": {
+                "aid": "1",
+                "value": "0"
+              }
+            },
+            {
+              "raw_line": 239,
+              "marker": "RW_LINK_AP_ECHOED",
+              "fields": {
+                "value": "20"
+              }
+            },
+            {
+              "raw_line": 258,
+              "marker": "RW_LINK_RADIO_SHUTDOWN",
+              "fields": {}
+            },
+            {
+              "raw_line": 259,
+              "marker": "RW_LINK_RADIO_RESULT",
+              "fields": {
+                "value": "PASS"
+              }
+            },
+            {
+              "raw_line": 260,
+              "marker": "RW_LINK_DONE",
+              "fields": {}
+            }
+          ]
+        },
+        "sta": {
+          "raw_sha256": "b42dea584cf5273ebf465c6216994c8936ae587f44b80520cf5d44d43a3681a8",
+          "raw_bytes": 50146,
+          "events": [
+            {
+              "raw_line": 1,
+              "marker": "RW_LINK_TIMEOUT",
+              "fields": {
+                "seq": "7"
+              }
+            },
+            {
+              "raw_line": 3,
+              "marker": "RW_LINK_TIMEOUT",
+              "fields": {
+                "seq": "8"
+              }
+            },
+            {
+              "raw_line": 11,
+              "marker": "RW_LINK_STA_STATE",
+              "fields": {
+                "value": "0"
+              }
+            },
+            {
+              "raw_line": 31,
+              "marker": "RW_LINK_TIMEOUT",
+              "fields": {
+                "seq": "9"
+              }
+            },
+            {
+              "raw_line": 163,
+              "marker": "RW_LINK_CHANNEL",
+              "fields": {
+                "freq_hz": "903500000",
+                "bw_mhz": "1",
+                "status": "0"
+              }
+            },
+            {
+              "raw_line": 192,
+              "marker": "RW_LINK_RADIO_CONFIG",
+              "fields": {
+                "country": "US",
+                "channel": "3",
+                "opclass": "1",
+                "max_tx_dbm": "1"
+              }
+            },
+            {
+              "raw_line": 220,
+              "marker": "RW_LINK_SCAN_TARGET",
+              "fields": {
+                "freq_hz": "903500000",
+                "bw_mhz": "1",
+                "rssi_dbm": "-40"
+              }
+            },
+            {
+              "raw_line": 232,
+              "marker": "RW_LINK_STA_STATE",
+              "fields": {
+                "value": "1"
+              }
+            },
+            {
+              "raw_line": 266,
+              "marker": "RW_LINK_STA_STATE",
+              "fields": {
+                "value": "2"
+              }
+            },
+            {
+              "raw_line": 273,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "0",
+                "rtt_us": "185880"
+              }
+            },
+            {
+              "raw_line": 274,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "1",
+                "rtt_us": "22530"
+              }
+            },
+            {
+              "raw_line": 275,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "2",
+                "rtt_us": "23081"
+              }
+            },
+            {
+              "raw_line": 276,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "3",
+                "rtt_us": "16481"
+              }
+            },
+            {
+              "raw_line": 277,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "4",
+                "rtt_us": "12943"
+              }
+            },
+            {
+              "raw_line": 278,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "5",
+                "rtt_us": "17504"
+              }
+            },
+            {
+              "raw_line": 279,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "6",
+                "rtt_us": "13499"
+              }
+            },
+            {
+              "raw_line": 280,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "7",
+                "rtt_us": "19804"
+              }
+            },
+            {
+              "raw_line": 281,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "8",
+                "rtt_us": "16918"
+              }
+            },
+            {
+              "raw_line": 282,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "9",
+                "rtt_us": "23474"
+              }
+            },
+            {
+              "raw_line": 283,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "10",
+                "rtt_us": "31612"
+              }
+            },
+            {
+              "raw_line": 284,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "11",
+                "rtt_us": "11849"
+              }
+            },
+            {
+              "raw_line": 285,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "12",
+                "rtt_us": "11443"
+              }
+            },
+            {
+              "raw_line": 286,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "13",
+                "rtt_us": "43002"
+              }
+            },
+            {
+              "raw_line": 287,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "14",
+                "rtt_us": "22830"
+              }
+            },
+            {
+              "raw_line": 288,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "15",
+                "rtt_us": "11609"
+              }
+            },
+            {
+              "raw_line": 289,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "16",
+                "rtt_us": "11601"
+              }
+            },
+            {
+              "raw_line": 290,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "17",
+                "rtt_us": "21412"
+              }
+            },
+            {
+              "raw_line": 291,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "18",
+                "rtt_us": "18111"
+              }
+            },
+            {
+              "raw_line": 292,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "19",
+                "rtt_us": "11981"
+              }
+            },
+            {
+              "raw_line": 293,
+              "marker": "RW_LINK_UDP",
+              "fields": {
+                "sent": "20",
+                "received": "20",
+                "planned": "20",
+                "rtt_mean_us": "27378",
+                "rtt_max_us": "185880"
+              }
+            },
+            {
+              "raw_line": 295,
+              "marker": "RW_LINK_STA_STATE",
+              "fields": {
+                "value": "0"
+              }
+            },
+            {
+              "raw_line": 315,
+              "marker": "RW_LINK_RADIO_SHUTDOWN",
+              "fields": {}
+            },
+            {
+              "raw_line": 316,
+              "marker": "RW_LINK_RADIO_RESULT",
+              "fields": {
+                "value": "PASS"
+              }
+            },
+            {
+              "raw_line": 317,
+              "marker": "RW_LINK_DONE",
+              "fields": {}
+            }
+          ]
+        }
+      }
+    },
+    {
+      "run_id": "legacy-com6",
+      "firmware_source": "0f9effa19ba91724e92287268e6765f72067169e",
+      "status": "PASS",
+      "checks": {
+        "twenty_unique_echoes": true,
+        "ap_echoed20": true,
+        "shutdown_done_both": true,
+        "result_pass_both": true
+      },
+      "host_monotonic_timestamps_available": false,
+      "roles": {
+        "ap": {
+          "raw_sha256": "3fbbfa753c8f9b2cddc2580fb2774a888d00e83f0624e5c1879670b5c224067c",
+          "raw_bytes": 48226,
+          "events": [
+            {
+              "raw_line": 132,
+              "marker": "RW_LINK_CHANNEL",
+              "fields": {
+                "freq_hz": "903500000",
+                "bw_mhz": "1",
+                "status": "0"
+              }
+            },
+            {
+              "raw_line": 161,
+              "marker": "RW_LINK_RADIO_CONFIG",
+              "fields": {
+                "country": "US",
+                "channel": "3",
+                "opclass": "1",
+                "max_tx_dbm": "1"
+              }
+            },
+            {
+              "raw_line": 184,
+              "marker": "RW_LINK_AP_READY",
+              "fields": {
+                "ip": "192.168.50.1",
+                "port": "3333",
+                "window_s": "120"
+              }
+            },
+            {
+              "raw_line": 209,
+              "marker": "RW_LINK_AP_STA_STATE",
+              "fields": {
+                "aid": "1",
+                "value": "2"
+              }
+            },
+            {
+              "raw_line": 222,
+              "marker": "RW_LINK_AP_STA_STATE",
+              "fields": {
+                "aid": "1",
+                "value": "3"
+              }
+            },
+            {
+              "raw_line": 238,
+              "marker": "RW_LINK_AP_STA_STATE",
+              "fields": {
+                "aid": "1",
+                "value": "0"
+              }
+            },
+            {
+              "raw_line": 249,
+              "marker": "RW_LINK_AP_ECHOED",
+              "fields": {
+                "value": "20"
+              }
+            },
+            {
+              "raw_line": 268,
+              "marker": "RW_LINK_RADIO_SHUTDOWN",
+              "fields": {}
+            },
+            {
+              "raw_line": 269,
+              "marker": "RW_LINK_RADIO_RESULT",
+              "fields": {
+                "value": "PASS"
+              }
+            },
+            {
+              "raw_line": 270,
+              "marker": "RW_LINK_DONE",
+              "fields": {}
+            }
+          ]
+        },
+        "sta": {
+          "raw_sha256": "ccb99ca76cbd89b1a7906a021bac3a361058c5db10fa2d14a2d39c7690148a1e",
+          "raw_bytes": 54674,
+          "events": [
+            {
+              "raw_line": 97,
+              "marker": "RW_LINK_CHANNEL",
+              "fields": {
+                "freq_hz": "903500000",
+                "bw_mhz": "1",
+                "status": "0"
+              }
+            },
+            {
+              "raw_line": 126,
+              "marker": "RW_LINK_RADIO_CONFIG",
+              "fields": {
+                "country": "US",
+                "channel": "3",
+                "opclass": "1",
+                "max_tx_dbm": "1"
+              }
+            },
+            {
+              "raw_line": 287,
+              "marker": "RW_LINK_CHANNEL",
+              "fields": {
+                "freq_hz": "903500000",
+                "bw_mhz": "1",
+                "status": "0"
+              }
+            },
+            {
+              "raw_line": 316,
+              "marker": "RW_LINK_RADIO_CONFIG",
+              "fields": {
+                "country": "US",
+                "channel": "3",
+                "opclass": "1",
+                "max_tx_dbm": "1"
+              }
+            },
+            {
+              "raw_line": 344,
+              "marker": "RW_LINK_SCAN_TARGET",
+              "fields": {
+                "freq_hz": "903500000",
+                "bw_mhz": "1",
+                "rssi_dbm": "-29"
+              }
+            },
+            {
+              "raw_line": 356,
+              "marker": "RW_LINK_STA_STATE",
+              "fields": {
+                "value": "1"
+              }
+            },
+            {
+              "raw_line": 390,
+              "marker": "RW_LINK_STA_STATE",
+              "fields": {
+                "value": "2"
+              }
+            },
+            {
+              "raw_line": 397,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "0",
+                "rtt_us": "224842"
+              }
+            },
+            {
+              "raw_line": 398,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "1",
+                "rtt_us": "22405"
+              }
+            },
+            {
+              "raw_line": 399,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "2",
+                "rtt_us": "13955"
+              }
+            },
+            {
+              "raw_line": 400,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "3",
+                "rtt_us": "26948"
+              }
+            },
+            {
+              "raw_line": 401,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "4",
+                "rtt_us": "23704"
+              }
+            },
+            {
+              "raw_line": 402,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "5",
+                "rtt_us": "12967"
+              }
+            },
+            {
+              "raw_line": 403,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "6",
+                "rtt_us": "17930"
+              }
+            },
+            {
+              "raw_line": 404,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "7",
+                "rtt_us": "13963"
+              }
+            },
+            {
+              "raw_line": 405,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "8",
+                "rtt_us": "12363"
+              }
+            },
+            {
+              "raw_line": 406,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "9",
+                "rtt_us": "22281"
+              }
+            },
+            {
+              "raw_line": 407,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "10",
+                "rtt_us": "27309"
+              }
+            },
+            {
+              "raw_line": 408,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "11",
+                "rtt_us": "12504"
+              }
+            },
+            {
+              "raw_line": 411,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "12",
+                "rtt_us": "24893"
+              }
+            },
+            {
+              "raw_line": 412,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "13",
+                "rtt_us": "15287"
+              }
+            },
+            {
+              "raw_line": 413,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "14",
+                "rtt_us": "25280"
+              }
+            },
+            {
+              "raw_line": 414,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "15",
+                "rtt_us": "18307"
+              }
+            },
+            {
+              "raw_line": 415,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "16",
+                "rtt_us": "12623"
+              }
+            },
+            {
+              "raw_line": 416,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "17",
+                "rtt_us": "24845"
+              }
+            },
+            {
+              "raw_line": 417,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "18",
+                "rtt_us": "41007"
+              }
+            },
+            {
+              "raw_line": 418,
+              "marker": "RW_LINK_ECHO",
+              "fields": {
+                "seq": "19",
+                "rtt_us": "23280"
+              }
+            },
+            {
+              "raw_line": 419,
+              "marker": "RW_LINK_UDP",
+              "fields": {
+                "sent": "20",
+                "received": "20",
+                "planned": "20",
+                "rtt_mean_us": "30834",
+                "rtt_max_us": "224842"
+              }
+            },
+            {
+              "raw_line": 421,
+              "marker": "RW_LINK_STA_STATE",
+              "fields": {
+                "value": "0"
+              }
+            },
+            {
+              "raw_line": 441,
+              "marker": "RW_LINK_RADIO_SHUTDOWN",
+              "fields": {}
+            },
+            {
+              "raw_line": 442,
+              "marker": "RW_LINK_RADIO_RESULT",
+              "fields": {
+                "value": "PASS"
+              }
+            },
+            {
+              "raw_line": 443,
+              "marker": "RW_LINK_DONE",
+              "fields": {}
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

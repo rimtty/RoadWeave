@@ -4,12 +4,16 @@
 
 ## 2026-09-19の到達点
 
-XIAO + WM6180の3組を認識し、全組のSPI診断に合格。2組を順番にAP/STAとして試験し、
-それぞれHaLow UDP 20/20往復に成功した。内蔵2.4 GHz Wi-Fiは使っていない。
-P0-Aの基本通信は成立したが、cold boot 50回、8時間soak、自動復帰、DHCP、電流等の検証は残る。
-3台同時通信は追加試験であり、元のP0-A必須条件とは分ける。
+XIAO + WM6180の3組でSPI診断、両STAのDHCP通信、3台同時UDP通信を確認した。
+software restartで見つかったGPIO割り込みwatchdogを修正し、AP/STA再起動各3回・APサービス再開3回の復帰を実証した。
+3台同時baselineと両STA交互再起動時の相手の継続、両幅の約82 kbit/s有限負荷も確認し、最後に全3台の無線を停止した。
+1/2 MHzを同一修正版で各3回測定し全回PASS。内蔵Wi-Fiは使っていない。測定範囲と限界は当日レポートを参照。
+8時間soakは今回対象外。実電源断50回は電源制御と手作業を実施できないため[Issue #27](https://github.com/rimtty/RoadWeave/issues/27)、
+電流・rail電圧は計測器購入が必要なため[Issue #28](https://github.com/rimtty/RoadWeave/issues/28)に残す。
+現物受入の未確認分もあり、P0-A全体は未完了。3台同時通信は追加試験として区別する。
 
-- [最新実測](bringup/halow-link-retest-2026-09-19.md)
+- [当日実証結果](bringup/p0-a-validation-report-2026-09-19.md)
+- [計測器・電源治具の準備](bringup/p0-a-equipment-followups-2026-09-19.md)
 - [残課題・判定基準・次の実行順](bringup/p0-a-open-items-2026-09-19.md)
 
 Issue/Projectの進捗・日程更新は別途必要。以下の計画日付を現在の完了状況として読まない。
