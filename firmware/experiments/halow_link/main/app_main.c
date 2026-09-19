@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include "esp_mac.h"
 #include "esp_psram.h"
+#include "esp_random.h"
+#include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "sdkconfig.h"
@@ -10,6 +12,9 @@ void app_main(void)
 {
     vTaskDelay(pdMS_TO_TICKS(1200));
     status_led_init();
+#ifdef CONFIG_RW_LINK_CONTINUOUS
+    printf("RW_LINK_BOOT boot_id=%08x reset_reason=%d\n", (unsigned)esp_random(), (int)esp_reset_reason());
+#endif
     uint8_t mac[6];
     ESP_ERROR_CHECK(esp_efuse_mac_get_default(mac));
     printf("RW_LINK_ROLE=%s ESP32_MAC=" MACSTR " PSRAM_BYTES=%u\n",

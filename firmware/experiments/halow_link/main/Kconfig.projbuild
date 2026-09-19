@@ -32,4 +32,33 @@ config RW_LINK_TX_POWER_DBM
     int "Maximum transmit power override (dBm; 0 disables override in SDK)"
     range 1 13
     default 1
+config RW_LINK_CONTINUOUS
+    bool "Finite continuous UDP validation (legacy 20 probes when disabled)"
+    default n
+    depends on RW_LINK_RF_ENABLE
+config RW_LINK_RUN_SECONDS
+    int "Continuous run duration in seconds"
+    range 30 28800
+    default 180
+    depends on RW_LINK_CONTINUOUS
+config RW_LINK_MAX_PROBES
+    int "STA maximum probes (0 uses duration only)"
+    range 0 100000
+    default 0
+    depends on RW_LINK_CONTINUOUS && RW_LINK_STA
+config RW_LINK_PAYLOAD_BYTES
+    int "Continuous UDP datagram length in bytes"
+    range 32 1024
+    default 256
+    depends on RW_LINK_CONTINUOUS
+config RW_LINK_INTERVAL_MS
+    int "Continuous STA probe interval in milliseconds"
+    range 100 5000
+    default 250
+    depends on RW_LINK_CONTINUOUS && RW_LINK_STA
+config RW_LINK_STA_ID
+    int "STA ID (1 => 192.168.50.2, 2 => 192.168.50.3)"
+    range 1 2
+    default 1
+    depends on RW_LINK_STA
 endmenu

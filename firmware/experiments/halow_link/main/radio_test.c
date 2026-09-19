@@ -24,7 +24,11 @@
 #endif
 
 #define AP_IP "192.168.50.1"
+#if defined(CONFIG_RW_LINK_STA_ID) && CONFIG_RW_LINK_STA_ID == 2
+#define STA_IP "192.168.50.3"
+#else
 #define STA_IP "192.168.50.2"
+#endif
 #define PORT 3333
 #define PROBES 20
 #define LINK_BIT BIT0
@@ -32,6 +36,16 @@
 static EventGroupHandle_t events;
 static esp_netif_t *netif;
 static struct mmwlan_s1g_channel_list bench_channels;
+#ifdef CONFIG_RW_LINK_CONTINUOUS
+bool validation_link_ready(void)
+{
+    return (xEventGroupGetBits(events) & (LINK_BIT | IP_BIT)) == (LINK_BIT | IP_BIT);
+}
+void validation_ap_netif_up(void)
+{
+    esp_netif_action_connected(netif, NULL, 0, NULL);
+}
+#endif
 
 /* The SDK wrapper leaves TX VIF unspecified, which is ambiguous after boot()
  * creates a STA VIF and AP mode creates a second VIF. Select the test role. */
@@ -293,7 +307,11 @@ bool run_radio_test(void)
     ap.pmf_mode = MMWLAN_PMF_REQUIRED;
     ap.s1g_chan_num = CONFIG_RW_LINK_CHANNEL;
     ap.op_class = CONFIG_RW_LINK_OPCLASS;
+#ifdef CONFIG_RW_LINK_CONTINUOUS
+    ap.max_stas = 2;
+#else
     ap.max_stas = 1;
+#endif
     ap.sta_status_cb = ap_sta_status;
     enum mmwlan_status ap_status = mmwlan_ap_enable(&ap);
     if (ap_status != MMWLAN_SUCCESS) {
@@ -306,7 +324,11 @@ bool run_radio_test(void)
     printf("RW_LINK_AP_MAC=%02x:%02x:%02x:%02x:%02x:%02x\n",
            ap_mac[0], ap_mac[1], ap_mac[2], ap_mac[3], ap_mac[4], ap_mac[5]);
     esp_netif_action_connected(netif, NULL, 0, NULL);
+#ifdef CONFIG_RW_LINK_CONTINUOUS
+    ok = run_validation_ap(&ap);
+#else
     ok = echo_server();
+#endif
     mmwlan_ap_disable();
 #else
     mmhalow_wifi_config_t sta = { .sta = MMWLAN_STA_ARGS_INIT };
@@ -321,9 +343,13 @@ bool run_radio_test(void)
     enum mmwlan_status sta_start = mmhalow_connect(sta_status);
     printf("RW_LINK_STA_START=%d\n", sta_start);
     if (sta_start != MMWLAN_SUCCESS) goto done;
+#ifdef CONFIG_RW_LINK_CONTINUOUS
+    ok = run_validation_sta();
+#else
     EventBits_t bits = xEventGroupWaitBits(events, LINK_BIT | IP_BIT, pdFALSE, pdTRUE, pdMS_TO_TICKS(30000));
     if ((bits & (LINK_BIT | IP_BIT)) == (LINK_BIT | IP_BIT)) ok = udp_probes();
     else printf("RW_LINK_CONNECT_TIMEOUT bits=%u\n", (unsigned)bits);
+#endif
     mmhalow_disconnect();
 #endif
 done:
