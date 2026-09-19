@@ -36,6 +36,7 @@
 
 enum control_command { CMD_NONE, CMD_RESTART, CMD_AP_OFF_10S, CMD_STOP };
 static atomic_int pending_command;
+static atomic_bool restart_requested;
 static TaskHandle_t reader_task;
 
 struct packet_header {
@@ -99,6 +100,7 @@ static void command_reader(void *arg)
 static bool start_reader(void)
 {
     atomic_store(&pending_command, CMD_NONE);
+    atomic_store(&restart_requested, false);
     return xTaskCreate(command_reader, "rw_link_cmd", 4096, NULL, 4, &reader_task) == pdPASS;
 }
 
@@ -115,11 +117,14 @@ static enum control_command take_command(void)
     enum control_command command = atomic_exchange(&pending_command, CMD_NONE);
     if (command == CMD_RESTART) {
         printf("RW_LINK_CMD_ACK command=RESTART\n");
-        fflush(stdout);
-        vTaskDelay(pdMS_TO_TICKS(200));
-        esp_restart();
+        atomic_store(&restart_requested, true);
     }
     return command;
+}
+
+bool validation_restart_requested(void)
+{
+    return atomic_load(&restart_requested);
 }
 
 static int open_udp(const char *ip, uint16_t port)
@@ -272,6 +277,7 @@ bool run_validation_sta(void)
     while (esp_timer_get_time() < end &&
            (!CONFIG_RW_LINK_MAX_PROBES || stats.planned < CONFIG_RW_LINK_MAX_PROBES)) {
         enum control_command command = take_command();
+        if (command == CMD_RESTART) break;
         if (command == CMD_STOP) { printf("RW_LINK_CMD_ACK command=STOP\n"); break; }
         if (command == CMD_AP_OFF_10S) printf("RW_LINK_CMD_REJECT reason=sta_role\n");
         int64_t now = esp_timer_get_time();
@@ -436,6 +442,7 @@ bool run_validation_ap(const struct mmwlan_ap_args *ap)
            VALIDATION_PORT, CONFIG_RW_LINK_RUN_SECONDS);
     while (esp_timer_get_time() < end) {
         enum control_command command = take_command();
+        if (command == CMD_RESTART) break;
         if (command == CMD_STOP) { printf("RW_LINK_CMD_ACK command=STOP\n"); break; }
         if (command == CMD_AP_OFF_10S) {
             if (end - esp_timer_get_time() < 12000000LL) {
