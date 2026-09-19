@@ -294,6 +294,10 @@ bool run_validation_sta(void)
                     int n = recv(fd, rx, sizeof(rx), 0);
                     if (n < 0) {
                         if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) continue;
+                        /* Connected UDP may surface ICMP/unreachable while AP is down. */
+                        if (errno == ECONNREFUSED || errno == ENETUNREACH ||
+                            errno == EHOSTUNREACH || errno == ENETDOWN ||
+                            errno == ECONNRESET) break;
                         printf("RW_LINK_SOCKET_ERROR phase=sta_recv errno=%d\n", errno);
                         execution_ok = false;
                         break;
